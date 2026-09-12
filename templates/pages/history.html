@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Event History{% endblock %}
+{% block breadcrumb %}Event History{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title"><i class="fa-solid fa-clock-rotate-left"></i> Event History</div>
+  <div class="page-actions">
+    <a href="/api/export/csv" class="btn btn-ghost btn-sm"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+    <a href="/api/export/pdf" class="btn btn-ghost btn-sm"><i class="fa-solid fa-file-pdf"></i> PDF Report</a>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card mb-24" style="padding:14px 20px">
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px">
+      <i class="fa-solid fa-filter" style="color:var(--text-muted);font-size:13px"></i>
+      <span style="font-size:13px;color:var(--text-secondary)">Filter:</span>
+    </div>
+    <select id="filterType" class="form-control" style="width:auto;padding:6px 12px;font-size:13px" onchange="applyFilter()">
+      <option value="all">All Events</option>
+      <option value="falls">Falls Only</option>
+      <option value="normal">Normal Activity</option>
+    </select>
+    <input type="date" id="filterDate" class="form-control" style="width:auto;padding:6px 12px;font-size:13px" onchange="applyFilter()">
+    <button class="btn btn-ghost btn-sm" onclick="clearFilter()"><i class="fa-solid fa-xmark"></i> Clear</button>
+    <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="resultCount"></span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    {% if events.items %}
+    <div class="table-wrap">
+      <table id="eventsTable">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Type</th>
+            <th>Activity</th>
+            <th>Confidence</th>
+            <th>Angle</th>
+            <th>Surface</th>
+            <th>Objects</th>
+            <th>Snapshot</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in events.items %}
+          <tr class="event-row {{ 'fall-row' if e.is_fall else '' }}"
+              data-type="{{ 'falls' if e.is_fall else 'normal' }}"
+              data-date="{{ e.timestamp.strftime('%Y-%m-%d') if e.timestamp else '' }}">
+            <td style="white-space:nowrap;font-size:12px">{{ e.timestamp.strftime('%Y-%m-%d %H:%M:%S') if e.timestamp else '—' }}</td>
+            <td>
+              {% if e.is_fall %}
+                <span class="badge badge-danger"><i class="fa-solid fa-person-falling"></i> Fall</span>
+              {% else %}
+                <span class="badge badge-success"><i class="fa-solid fa-check"></i> Normal</span>
+              {% endif %}
+            </td>
+            <td style="font-size:13px">{{ e.activity_label or '—' }}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="flex:1;background:var(--border);border-radius:2px;height:4px;min-width:50px">
+                  <div style="width:{{ (e.confidence_total*100)|int }}%;background:{% if e.is_fall %}var(--danger){% else %}var(--success){% endif %};height:4px;border-radius:2px"></div>
+                </div>
+                <span class="font-mono {% if e.is_fall %}text-danger{% else %}text-success{% endif %}" style="font-size:11px;min-width:32px">
+                  {{ (e.confidence_total*100)|int }}%
+                </span>
+              </div>
+            </td>
+            <td class="font-mono" style="font-size:12px">{{ '%.1f'|format(e.body_angle) if e.body_angle else '—' }}°</td>
+            <td style="font-size:12px">{{ e.detected_objects or '[]' }}</td>
+            <td style="font-size:12px">{{ e.detected_objects or 'none' }}</td>
+            <td>
+              {% if e.image_path %}
+                <a href="/static/{{ e.image_path }}" target="_blank" class="btn btn-ghost btn-sm">
+                  <i class="fa-solid fa-image"></i>
+                </a>
+              {% else %}
+                <span style="color:var(--text-muted);font-size:12px">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if events.pages > 1 %}
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:20px">
+      {% if events.has_prev %}
+        <a href="?page={{ events.prev_num }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-chevron-left"></i></a>
+      {% endif %}
+      {% for p in events.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if p %}
+          <a href="?page={{ p }}" class="btn {% if p == events.page %}btn-primary{% else %}btn-ghost{% endif %} btn-sm">{{ p }}</a>
+        {% else %}
+          <span style="color:var(--text-muted);padding:6px 4px">…</span>
+        {% endif %}
+      {% endfor %}
+      {% if events.has_next %}
+        <a href="?page={{ events.next_num }}" class="btn btn-ghost btn-sm"><i class="fa-solid fa-chevron-right"></i></a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div style="text-align:center;padding:48px 20px;color:var(--text-muted)">
+      <i class="fa-solid fa-database" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3"></i>
+      <p style="font-size:15px;font-weight:600;color:var(--text-secondary)">No events recorded</p>
+      <p style="font-size:13px;margin-top:4px">Start the camera to begin monitoring and recording events.</p>
+      <a href="{{ url_for('dashboard.monitor') }}" class="btn btn-primary btn-sm" style="margin-top:16px">
+        <i class="fa-solid fa-video"></i> Go to Monitor
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function applyFilter() {
+  const type = document.getElementById('filterType').value;
+  const date = document.getElementById('filterDate').value;
+  const rows = document.querySelectorAll('.event-row');
+  let visible = 0;
+  rows.forEach(row => {
+    const rowType = row.dataset.type;
+    const rowDate = row.dataset.date;
+    const typeMatch = type === 'all' || rowType === type;
+    const dateMatch = !date || rowDate === date;
+    const show = typeMatch && dateMatch;
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  const rc = document.getElementById('resultCount');
+  if (rc) rc.textContent = `Showing ${visible} of ${rows.length} events`;
+}
+
+function clearFilter() {
+  document.getElementById('filterType').value = 'all';
+  document.getElementById('filterDate').value = '';
+  applyFilter();
+}
+
+// Initial count
+document.addEventListener('DOMContentLoaded', () => {
+  const rows = document.querySelectorAll('.event-row');
+  const rc = document.getElementById('resultCount');
+  if (rc) rc.textContent = `${rows.length} events`;
+});
+</script>
+
+<style>
+.fall-row { background: rgba(239,68,68,0.03); }
+.fall-row:hover td { background: rgba(239,68,68,0.06) !important; }
+</style>
+{% endblock %}

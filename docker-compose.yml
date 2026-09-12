@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  fallguard:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./static/events:/app/static/events
+      - ./static/exports:/app/static/exports
+      - ./logs:/app/logs
+      - ./fallguard.db:/app/fallguard.db
+    env_file:
+      - .env
+    environment:
+      - FLASK_ENV=production
+    restart: unless-stopped
+    devices:
+      # Pass through webcam (adjust as needed)
+      - /dev/video0:/dev/video0

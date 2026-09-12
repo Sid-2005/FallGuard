@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}About{% endblock %}
+{% block breadcrumb %}About FallGuard AI{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto">
+
+  <!-- Hero -->
+  <div class="card mb-24" style="padding:40px;text-align:center;background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(139,92,246,0.06))">
+    <div style="width:72px;height:72px;background:linear-gradient(135deg,var(--accent),var(--accent-2));border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px;box-shadow:0 0 30px var(--accent-glow)">
+      <i class="fa-solid fa-shield-heart" style="color:white"></i>
+    </div>
+    <h1 style="font-size:28px;font-weight:800;margin-bottom:8px">FallGuard <span style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">AI</span></h1>
+    <p style="color:var(--text-secondary);font-size:15px;max-width:520px;margin:0 auto">
+      A production-ready healthcare monitoring platform using multi-stage AI for accurate real-time fall detection with minimal false positives.
+    </p>
+    <div style="display:flex;justify-content:center;gap:12px;margin-top:20px;flex-wrap:wrap">
+      <span class="badge badge-info">MediaPipe Pose</span>
+      <span class="badge badge-info">YOLOv8 Detection</span>
+      <span class="badge badge-success">Flask + SocketIO</span>
+      <span class="badge badge-info">SQLAlchemy</span>
+      <span class="badge badge-info">Glassmorphism UI</span>
+    </div>
+  </div>
+
+  <!-- Detection Pipeline -->
+  <div class="card mb-24">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-diagram-project"></i> 4-Stage Detection Pipeline</div></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px">
+        {% set stages = [
+          ('1','fa-person','Stage 1: Human Detection','YOLOv8n detects and tracks persons in real-time with bounding boxes.','blue'),
+          ('2','fa-joint','Stage 2: Pose Estimation','MediaPipe extracts 33 body keypoints per frame for angle analysis.','purple'),
+          ('3','fa-chart-line','Stage 3: Fall Analysis','5-factor weighted confidence: posture, velocity, height, inactivity, context.','warning'),
+          ('4','fa-bed','Stage 4: Context Awareness','Object detection prevents false positives on beds, sofas, chairs.','success'),
+        ] %}
+        {% for num, icon, title, desc, color in stages %}
+        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center">
+          <div style="width:44px;height:44px;background:rgba(59,130,246,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:18px;color:var(--accent)">
+            <i class="fa-solid {{ icon }}"></i>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:6px">{{ title }}</div>
+          <div style="font-size:12px;color:var(--text-secondary)">{{ desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Confidence Weights -->
+  <div class="card mb-24">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-scale-balanced"></i> Confidence Score Weights</div></div>
+    <div class="card-body">
+      {% set factors = [
+        ('Posture Score','30%','Body angle < 30° = high horizontal = potential fall','var(--accent)'),
+        ('Velocity Score','25%','Sudden downward center-of-mass movement detection','var(--accent-2)'),
+        ('Height Change','20%','Compression of body bounding box height over frames','var(--warning)'),
+        ('Inactivity Score','15%','Person remains still for 5–10s after suspected fall','var(--success)'),
+        ('Object Context','10%','Floor vs. bed/sofa surface detection via overlap logic','#06b6d4'),
+      ] %}
+      {% for label, weight, desc, color in factors %}
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+        <div style="width:44px;text-align:center;font-size:16px;font-weight:800;color:{{ color }};flex-shrink:0">{{ weight }}</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:600;color:var(--text-primary)">{{ label }}</span>
+          </div>
+          <div style="background:var(--border);border-radius:3px;height:6px;overflow:hidden">
+            <div style="width:{{ weight }};background:{{ color }};height:6px;border-radius:3px"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:3px">{{ desc }}</div>
+        </div>
+      </div>
+      {% endfor %}
+      <div style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-sm);padding:12px 16px;margin-top:8px">
+        <div style="font-size:12px;color:var(--text-secondary)">
+          <i class="fa-solid fa-circle-info" style="color:var(--accent)"></i>
+          &nbsp;Alert is triggered only when <strong>total confidence ≥ 85%</strong>.
+          If person is on a bed/sofa with ≥50% bounding box overlap, fall confidence is suppressed to 0 from context factor.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="card mb-24">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-layer-group"></i> Technology Stack</div></div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+        {% set techs = [
+          ('Backend','Flask, Flask-SocketIO, Flask-Login, SQLAlchemy'),
+          ('AI / CV','MediaPipe Pose, YOLOv8n (Ultralytics), OpenCV'),
+          ('Database','SQLite (dev) / PostgreSQL (prod)'),
+          ('Frontend','HTML5, CSS3 (Glassmorphism), Vanilla JS'),
+          ('Charts','Chart.js 4'),
+          ('Alerts','Email (SMTP), SMS (Twilio)'),
+          ('Reports','WeasyPrint PDF, CSV Export'),
+          ('Security','Werkzeug password hash, Flask-Login sessions'),
+        ] %}
+        {% for title, desc in techs %}
+        <div style="background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.8px;color:var(--accent);text-transform:uppercase;margin-bottom:4px">{{ title }}</div>
+          <div style="font-size:12px;color:var(--text-secondary)">{{ desc }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Start -->
+  <div class="card">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-rocket"></i> Quick Start</div></div>
+    <div class="card-body">
+      <div style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 20px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:2;color:var(--text-secondary)">
+        <div><span style="color:var(--text-muted)"># Install dependencies</span></div>
+        <div><span style="color:var(--accent)">pip</span> install -r requirements.txt</div>
+        <br>
+        <div><span style="color:var(--text-muted)"># Configure environment</span></div>
+        <div><span style="color:var(--accent)">cp</span> .env.example .env</div>
+        <br>
+        <div><span style="color:var(--text-muted)"># Run development server</span></div>
+        <div><span style="color:var(--accent)">python</span> run.py</div>
+        <br>
+        <div><span style="color:var(--text-muted)"># Open in browser</span></div>
+        <div><span style="color:var(--success)">http://localhost:5000</span> &nbsp;→&nbsp; admin / admin123</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

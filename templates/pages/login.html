@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Sign In{% endblock %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <div class="auth-logo">
+    <div class="auth-logo-icon"><i class="fa-solid fa-shield-heart"></i></div>
+    <div>
+      <div class="auth-title">FallGuard <span style="background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">AI</span></div>
+    </div>
+  </div>
+  <p class="auth-subtitle">Healthcare Monitoring Platform</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, msg in messages %}
+      <div class="toast toast-{{ category }}" style="margin-bottom:16px">
+        <i class="fa-solid {% if category == 'error' %}fa-circle-xmark{% else %}fa-circle-check{% endif %}"></i>{{ msg }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('auth.login') }}">
+    <div class="form-group">
+      <label class="form-label">Username or Email</label>
+      <input type="text" name="identifier" class="form-control" placeholder="Enter username or email" required autofocus>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+    </div>
+    <div class="toggle-wrap" style="margin-bottom:20px">
+      <input type="checkbox" name="remember" id="remember" style="display:none">
+      <div class="toggle" id="rememberToggle" onclick="toggleRemember()"></div>
+      <label class="toggle-label" for="remember">Remember me for 24 hours</label>
+    </div>
+    <button type="submit" class="btn btn-primary w-full" style="justify-content:center;padding:12px">
+      <i class="fa-solid fa-right-to-bracket"></i> Sign In
+    </button>
+  </form>
+
+  <div class="auth-divider">OR</div>
+  <p style="text-align:center;font-size:13px;color:var(--text-secondary)">
+    Don't have an account? <a href="{{ url_for('auth.signup') }}">Create one</a>
+  </p>
+
+  <div style="margin-top:24px;padding:12px;background:rgba(59,130,246,0.07);border-radius:8px;border:1px solid rgba(59,130,246,0.15)">
+    <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">DEFAULT CREDENTIALS</div>
+    <div style="font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace">
+      admin / admin123
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleRemember() {
+  const toggle = document.getElementById('rememberToggle');
+  const cb = document.getElementById('remember');
+  toggle.classList.toggle('on');
+  cb.checked = toggle.classList.contains('on');
+}
+</script>
+{% endblock %}

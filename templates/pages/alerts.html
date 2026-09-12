@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Alert History{% endblock %}
+{% block breadcrumb %}Alert History{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title"><i class="fa-solid fa-bell"></i> Fall Alert History</div>
+  <div class="page-actions">
+    <a href="/api/export/csv" class="btn btn-ghost btn-sm"><i class="fa-solid fa-download"></i> Export</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-person-falling-burst"></i> Fall Events
+      <span class="badge badge-danger" style="margin-left:8px">{{ falls|length }}</span>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if falls %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Event ID</th>
+            <th>Activity</th>
+            <th>Confidence</th>
+            <th>Posture</th>
+            <th>Velocity</th>
+            <th>Height Δ</th>
+            <th>Context</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in falls %}
+          <tr id="row-{{ e.id }}">
+            <td style="white-space:nowrap">{{ e.timestamp[:19] if e.timestamp else '—' }}</td>
+            <td class="font-mono" style="font-size:11px;color:var(--text-muted)">{{ e.event_id[:8] if e.event_id else '—' }}…</td>
+            <td>
+              <span class="badge badge-danger">
+                <i class="fa-solid fa-person-falling"></i>
+                {{ e.activity_label or 'fallen' }}
+              </span>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="flex:1;background:var(--border);border-radius:2px;height:4px;min-width:60px">
+                  <div style="width:{{ (e.confidence_total*100)|int }}%;background:var(--danger);height:4px;border-radius:2px"></div>
+                </div>
+                <span class="font-mono text-danger" style="font-size:12px">{{ (e.confidence_total*100)|int }}%</span>
+              </div>
+            </td>
+            <td class="font-mono" style="font-size:12px">{{ (e.confidence_posture*100)|int }}%</td>
+            <td class="font-mono" style="font-size:12px">{{ (e.confidence_velocity*100)|int }}%</td>
+            <td class="font-mono" style="font-size:12px">{{ (e.confidence_height*100)|int }}%</td>
+            <td style="font-size:12px">{{ e.detected_objects or '[]' }}</td>
+            <td>
+              {% if e.is_resolved %}
+                <span class="badge badge-success"><i class="fa-solid fa-check"></i> Resolved</span>
+              {% else %}
+                <span class="badge badge-warning"><i class="fa-solid fa-circle-exclamation"></i> Open</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if not e.is_resolved %}
+              <button class="btn btn-success btn-sm" onclick="resolveEvent({{ e.id }})">
+                <i class="fa-solid fa-check"></i>
+              </button>
+              {% endif %}
+              {% if e.image_path %}
+              <a href="/static/{{ e.image_path }}" target="_blank" class="btn btn-ghost btn-sm">
+                <i class="fa-solid fa-image"></i>
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:40px 20px;color:var(--text-muted)">
+      <i class="fa-solid fa-shield-check" style="font-size:40px;display:block;margin-bottom:12px;color:var(--success)"></i>
+      <p style="font-size:15px;font-weight:600;color:var(--text-secondary)">No fall events recorded</p>
+      <p style="font-size:13px;margin-top:4px">All clear — the system is monitoring and no falls have been detected.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function resolveEvent(id) {
+  try {
+    const res = await fetch(`/alerts/resolve/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const row = document.getElementById(`row-${id}`);
+      if (row) {
+        const statusCell = row.querySelector('td:nth-child(9)');
+        const actionCell = row.querySelector('td:nth-child(10)');
+        if (statusCell) statusCell.innerHTML = '<span class="badge badge-success"><i class="fa-solid fa-check"></i> Resolved</span>';
+        if (actionCell) actionCell.querySelector('button')?.remove();
+      }
+      showToast('Event resolved', 'success');
+    }
+  } catch(e) { showToast('Failed to resolve', 'error'); }
+}
+</script>
+{% endblock %}

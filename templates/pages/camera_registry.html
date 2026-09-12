@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+{% block title %}Camera Registry{% endblock %}
+{% block breadcrumb %}Camera Registry{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">
+    <i class="fa-solid fa-video"></i> Camera Registry
+  </div>
+  <button class="btn btn-primary" onclick="showAddModal()">
+    <i class="fa-solid fa-plus"></i> Add Camera
+  </button>
+</div>
+
+<!-- Info banner -->
+<div style="background:rgba(56,139,253,0.1);border:1px solid rgba(56,139,253,0.3);
+            border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:20px;
+            font-size:13px;color:var(--text-secondary)">
+  <i class="fa-solid fa-circle-info" style="color:#388bfd;margin-right:8px"></i>
+  Each camera device must be running <code>python run.py</code> on the same network.
+  Maximum <strong>4 cameras</strong> supported. Find a device's IP using
+  <code>ipconfig</code> (Windows) or <code>ifconfig</code> (Linux/Mac).
+</div>
+
+<!-- Camera cards grid -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px"
+     id="nodeGrid">
+
+  {% for node in nodes %}
+  <div class="card" id="node-{{ node.id }}">
+    <div class="card-header">
+      <div class="card-title" style="font-size:13px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;
+               background:{{ '#3fb950' if node.enabled else '#555' }};margin-right:6px"></span>
+        {{ node.name }}
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm"
+                onclick="testConnection('{{ node.id }}','{{ node.url }}')"
+                title="Test connection">
+          <i class="fa-solid fa-plug" style="font-size:11px"></i>
+        </button>
+        <button class="btn btn-ghost btn-sm"
+                onclick="toggleNode('{{ node.id }}')"
+                title="{{ 'Disable' if node.enabled else 'Enable' }}">
+          <i class="fa-solid fa-{{ 'pause' if node.enabled else 'play' }}"
+             style="font-size:11px"></i>
+        </button>
+        <button class="btn btn-ghost btn-sm"
+                onclick="deleteNode('{{ node.id }}','{{ node.name }}')"
+                title="Delete" style="color:#f85149">
+          <i class="fa-solid fa-trash" style="font-size:11px"></i>
+        </button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px">
+        <span style="color:var(--text-muted)">Location</span>
+        <span style="color:var(--text-primary)">{{ node.location or '—' }}</span>
+        <span style="color:var(--text-muted)">Host</span>
+        <span style="color:var(--accent);font-family:monospace">{{ node.host }}</span>
+        <span style="color:var(--text-muted)">Port</span>
+        <span style="color:var(--text-primary);font-family:monospace">{{ node.port }}</span>
+        <span style="color:var(--text-muted)">URL</span>
+        <a href="{{ node.url }}" target="_blank"
+           style="color:var(--accent);font-size:11px;
+                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+          {{ node.url }}
+        </a>
+        <span style="color:var(--text-muted)">Status</span>
+        <span id="status-{{ node.id }}"
+              style="color:{{ '#3fb950' if node.enabled else '#8b949e' }}">
+          {{ 'Active' if node.enabled else 'Disabled' }}
+        </span>
+      </div>
+      <div id="test-result-{{ node.id }}"
+           style="display:none;margin-top:10px;padding:6px 10px;
+                  border-radius:var(--radius-sm);font-size:12px">
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Empty slots -->
+  {% for i in range(4 - nodes|length) %}
+  <div class="card" style="opacity:0.4;border-style:dashed">
+    <div style="padding:32px;text-align:center">
+      <i class="fa-solid fa-plus"
+         style="font-size:24px;color:#333;margin-bottom:8px;display:block"></i>
+      <span style="font-size:12px;color:#555">Camera slot {{ nodes|length + i + 1 }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Setup instructions -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-book"></i> Setup Instructions
+    </div>
+  </div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-size:13px">
+      <div>
+        <h4 style="color:var(--text-primary);margin-bottom:12px">
+          On each ward device:
+        </h4>
+        <ol style="color:var(--text-secondary);line-height:2;padding-left:16px">
+          <li>Install the project and model file</li>
+          <li>Run: <code style="background:var(--bg-secondary);padding:1px 6px;
+              border-radius:3px">python run.py</code></li>
+          <li>Note the device's IP address</li>
+          <li>Ensure the device stays connected to WiFi/LAN</li>
+        </ol>
+      </div>
+      <div>
+        <h4 style="color:var(--text-primary);margin-bottom:12px">
+          Find IP address:
+        </h4>
+        <div style="background:var(--bg-secondary);padding:12px;border-radius:var(--radius-sm)">
+          <div style="color:var(--text-muted);margin-bottom:6px">Windows:</div>
+          <code style="color:var(--accent)">ipconfig</code>
+          <div style="color:var(--text-muted);margin:8px 0 4px">Look for:</div>
+          <code style="color:var(--text-secondary);font-size:11px">
+            IPv4 Address. . . : 192.168.1.XX
+          </code>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Camera Modal -->
+<div id="addModal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);
+            z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--bg-card);border:1px solid var(--border);
+              border-radius:var(--radius-lg);padding:24px;width:420px;
+              max-width:90vw">
+    <h3 style="color:var(--text-primary);margin-bottom:20px;font-size:16px">
+      <i class="fa-solid fa-video" style="color:var(--accent);margin-right:8px"></i>
+      Add Camera Device
+    </h3>
+
+    <div class="form-group">
+      <label class="form-label">Camera Name *</label>
+      <input type="text" id="newName" class="form-control"
+             placeholder="e.g. Ward 1, ICU Room 2">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Location / Room</label>
+      <input type="text" id="newLocation" class="form-control"
+             placeholder="e.g. Room 101, Corridor A">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Camera Type *</label>
+      <select id="newType" class="form-control" onchange="toggleCameraType()">
+        <option value="local">Phone / local stream (processed by this server)</option>
+        <option value="remote">Remote FallGuard node (its own server)</option>
+      </select>
+    </div>
+
+    <div id="localFields">
+      <div class="form-group">
+        <label class="form-label">Stream URL *</label>
+        <input type="text" id="newStreamUrl" class="form-control"
+               placeholder="e.g. http://192.168.1.42:8080/video">
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+          On the phone, install "IP Webcam" (Android) or a similar app, connect it
+          to the same Wi-Fi as this server, and it will show you this URL.
+        </div>
+      </div>
+    </div>
+
+    <div id="remoteFields" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Device IP Address *</label>
+        <input type="text" id="newHost" class="form-control"
+               placeholder="e.g. 192.168.1.10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Port</label>
+        <input type="number" id="newPort" class="form-control"
+               value="5000" min="1000" max="65535">
+      </div>
+    </div>
+
+    <!-- Quick test -->
+    <div style="margin-bottom:16px">
+      <button class="btn btn-ghost btn-sm" onclick="testNewConnection()">
+        <i class="fa-solid fa-plug"></i> Test Connection
+      </button>
+      <span id="newTestResult" style="font-size:12px;margin-left:8px"></span>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="hideAddModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="addCamera()">
+        <i class="fa-solid fa-plus"></i> Add Camera
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Modal ─────────────────────────────────────────────────────
+function showAddModal() {
+  document.getElementById('addModal').style.display = 'flex';
+  document.getElementById('newName').focus();
+}
+function hideAddModal() {
+  document.getElementById('addModal').style.display = 'none';
+  ['newName','newLocation','newHost','newStreamUrl'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('newPort').value = '5000';
+  document.getElementById('newType').value = 'local';
+  toggleCameraType();
+  document.getElementById('newTestResult').textContent = '';
+}
+
+function toggleCameraType() {
+  const isLocal = document.getElementById('newType').value === 'local';
+  document.getElementById('localFields').style.display  = isLocal ? 'block' : 'none';
+  document.getElementById('remoteFields').style.display = isLocal ? 'none'  : 'block';
+}
+
+// ── Add camera ────────────────────────────────────────────────
+async function addCamera() {
+  const name     = document.getElementById('newName').value.trim();
+  const isLocal  = document.getElementById('newType').value === 'local';
+  const streamUrl = document.getElementById('newStreamUrl').value.trim();
+  const host     = document.getElementById('newHost').value.trim();
+
+  if (!name) { showToast('Camera name is required', 'error'); return; }
+  if (isLocal && !streamUrl) {
+    showToast('Stream URL is required for a phone/local camera', 'error'); return;
+  }
+  if (!isLocal && !host) {
+    showToast('IP address is required for a remote node', 'error'); return;
+  }
+
+  try {
+    const res  = await fetch('/api/nodes', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name,
+        location:   document.getElementById('newLocation').value.trim(),
+        is_local:   isLocal,
+        stream_url: streamUrl,
+        host,
+        port: parseInt(document.getElementById('newPort').value) || 5000,
+      })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      showToast(data.message || 'Failed to add camera', 'error'); return;
+    }
+    showToast(`${name} added successfully`, 'success');
+    hideAddModal();
+    setTimeout(() => location.reload(), 800);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ── Delete camera ─────────────────────────────────────────────
+async function deleteNode(id, name) {
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  try {
+    const res  = await fetch(`/api/nodes/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`${name} removed`, 'info');
+      document.getElementById(`node-${id}`)?.remove();
+    }
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ── Toggle camera ─────────────────────────────────────────────
+async function toggleNode(id) {
+  try {
+    const res  = await fetch(`/api/nodes/${id}/toggle`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const el = document.getElementById(`status-${id}`);
+      if (el) {
+        el.textContent = data.enabled ? 'Active' : 'Disabled';
+        el.style.color = data.enabled ? '#3fb950' : '#8b949e';
+      }
+      showToast(`Camera ${data.enabled ? 'enabled' : 'disabled'}`, 'info');
+    }
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+// ── Test connection ───────────────────────────────────────────
+async function testConnection(id, url) {
+  const el = document.getElementById(`test-result-${id}`);
+  el.style.display = 'block';
+  el.style.background = 'var(--bg-secondary)';
+  el.style.color = 'var(--text-muted)';
+  el.textContent = 'Testing…';
+  try {
+    const res = await fetch(`${url}/api/detection/status`,
+                            { signal: AbortSignal.timeout(4000) });
+    const data = await res.json();
+    el.style.background = 'rgba(63,185,80,0.1)';
+    el.style.color = '#3fb950';
+    el.textContent = `✓ Connected — ${data.ready ? 'Detection ready' : 'Detection not ready'}`;
+  } catch(e) {
+    el.style.background = 'rgba(248,81,73,0.1)';
+    el.style.color = '#f85149';
+    el.textContent = '✗ Cannot connect — check IP and ensure run.py is running';
+  }
+}
+
+async function testNewConnection() {
+  const host = document.getElementById('newHost').value.trim();
+  const port = document.getElementById('newPort').value || '5000';
+  const el   = document.getElementById('newTestResult');
+  if (!host) { el.textContent = 'Enter IP first'; return; }
+  el.style.color = 'var(--text-muted)';
+  el.textContent = 'Testing…';
+  try {
+    const res = await fetch(`http://${host}:${port}/api/detection/status`,
+                            { signal: AbortSignal.timeout(4000) });
+    const data = await res.json();
+    el.style.color = '#3fb950';
+    el.textContent = '✓ Connected!';
+  } catch(e) {
+    el.style.color = '#f85149';
+    el.textContent = '✗ Cannot connect';
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('addModal').addEventListener('click', function(e) {
+  if (e.target === this) hideAddModal();
+});
+</script>
+{% endblock %}

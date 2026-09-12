@@ -1,0 +1,67 @@
+# FallGuard AI — Python 3.11 Dependencies
+# Common dependencies for all team members
+# Works with NVIDIA GPU and CPU-only systems
+
+Flask==3.0.0
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+Flask-SocketIO==5.3.6
+python-dotenv==1.0.0
+
+mediapipe==0.10.35
+opencv-python==4.9.0.80
+numpy==1.26.0
+Pillow==10.2.0
+
+SQLAlchemy==2.0.16
+Werkzeug==3.0.1
+eventlet==0.35.0
+
+# YOLO object detection and pose estimation
+ultralytics==8.4.110
+
+requests==2.31.0
+
+# Offline text-to-speech for voice alerts
+pyttsx3==2.90
+
+
+# ============================================================
+# PYTORCH INSTALLATION
+# ============================================================
+
+# For CPU-only systems / systems without NVIDIA GPU:
+# Run after installing requirements.txt:
+#
+# python -m pip install torch torchvision torchaudio
+#
+# YOLO will run using CPU processing.
+
+
+# ============================================================
+# NVIDIA GPU USERS
+# ============================================================
+
+# First install the requirements normally:
+#
+# python -m pip install -r requirements.txt
+#
+# Then remove the CPU version of PyTorch:
+#
+# python -m pip uninstall torch torchvision torchaudio -y
+#
+# Install the CUDA 12.8 version of PyTorch:
+#
+# python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+#
+# Verify CUDA and GPU:
+#
+# python -c "import torch; print('PyTorch:', torch.__version__); print('CUDA available:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'Not detected')"
+#
+# Expected output:
+#
+# PyTorch: 2.x.x+cu128
+# CUDA available: True
+# GPU: NVIDIA GeForce RTX 4050 Laptop GPU
+#
+# (The GPU name will be different depending on your NVIDIA GPU.)

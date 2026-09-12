@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Analytics{% endblock %}
+{% block breadcrumb %}Analytics & Insights{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title"><i class="fa-solid fa-chart-line"></i> Analytics</div>
+  <div class="page-actions">
+    <a href="/api/export/csv" class="btn btn-ghost btn-sm"><i class="fa-solid fa-file-csv"></i> Export CSV</a>
+    <a href="/api/export/pdf" class="btn btn-ghost btn-sm"><i class="fa-solid fa-file-pdf"></i> PDF Report</a>
+  </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid mb-24">
+  <div class="stat-card danger">
+    <div class="stat-icon red"><i class="fa-solid fa-person-falling-burst"></i></div>
+    <div class="stat-value" id="totalFalls">—</div>
+    <div class="stat-label">Total Falls</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon blue"><i class="fa-solid fa-calendar-days"></i></div>
+    <div class="stat-value" id="totalEvents">—</div>
+    <div class="stat-label">Total Events</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon green"><i class="fa-solid fa-bullseye"></i></div>
+    <div class="stat-value" id="avgConf">—</div>
+    <div class="stat-label">Avg Fall Confidence</div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-chart-bar"></i> Falls — Last 7 Days</div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container"><canvas id="dailyChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-chart-pie"></i> Activity Distribution</div>
+    </div>
+    <div class="card-body">
+      <div class="chart-container"><canvas id="activityChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- AI Insights Card -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title"><i class="fa-solid fa-lightbulb"></i> AI Health Insights</div>
+  </div>
+  <div class="card-body" id="insightsBody">
+    <div style="display:flex;gap:12px;flex-wrap:wrap" id="insightsList">
+      <div style="font-size:13px;color:var(--text-muted)">Loading insights…</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let dailyChart, activityChart;
+
+const chartDefaults = {
+  plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } } } },
+  scales: {
+    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+  }
+};
+
+async function loadAnalytics() {
+  try {
+    const res  = await fetch('/analytics/data');
+    const data = await res.json();
+
+    // Stats
+    document.getElementById('totalFalls').textContent  = data.stats.total_falls;
+    document.getElementById('totalEvents').textContent = data.stats.total_events;
+    document.getElementById('avgConf').textContent     = `${Math.round(data.stats.avg_confidence * 100)}%`;
+
+    // Daily chart
+    const labels = data.daily.map(d => d.date);
+    const counts = data.daily.map(d => d.count);
+    if (dailyChart) dailyChart.destroy();
+    dailyChart = new Chart(document.getElementById('dailyChart'), {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Falls',
+          data: counts,
+          backgroundColor: 'rgba(239,68,68,0.6)',
+          borderColor: '#ef4444',
+          borderWidth: 2,
+          borderRadius: 6
+        }]
+      },
+      options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+    });
+
+    // Activity distribution
+    const aLabels = data.activity_distribution.map(a => a.label);
+    const aCounts = data.activity_distribution.map(a => a.count);
+    const palette = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'];
+    if (activityChart) activityChart.destroy();
+    activityChart = new Chart(document.getElementById('activityChart'), {
+      type: 'doughnut',
+      data: {
+        labels: aLabels,
+        datasets: [{ data: aCounts, backgroundColor: palette, borderWidth: 0, hoverOffset: 8 }]
+      },
+      options: {
+        plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { family: 'Inter', size: 11 }, padding: 12 } } },
+        cutout: '65%'
+      }
+    });
+
+    // Insights
+    renderInsights(data);
+  } catch(e) {
+    console.error('Analytics load failed', e);
+  }
+}
+
+function renderInsights(data) {
+  const insights = [];
+  const { total_falls, total_events, avg_confidence } = data.stats;
+
+  if (total_falls === 0) {
+    insights.push({ icon: 'fa-circle-check', color: 'var(--success)', text: 'No falls recorded. Monitoring is working effectively.' });
+  } else if (total_falls > 5) {
+    insights.push({ icon: 'fa-triangle-exclamation', color: 'var(--warning)', text: `High fall frequency detected (${total_falls} falls). Consider environmental safety review.` });
+  }
+
+  if (avg_confidence > 0.9) {
+    insights.push({ icon: 'fa-bullseye', color: 'var(--accent)', text: `High detection confidence (${Math.round(avg_confidence*100)}%). Model is performing well.` });
+  }
+
+  const risky = data.daily.filter(d => d.count > 0);
+  if (risky.length > 0) {
+    insights.push({ icon: 'fa-calendar-xmark', color: 'var(--danger)', text: `Falls occurred on ${risky.length} of the last 7 days.` });
+  }
+
+  if (insights.length === 0) {
+    insights.push({ icon: 'fa-chart-line', color: 'var(--text-secondary)', text: 'Insufficient data for insights. More monitoring sessions needed.' });
+  }
+
+  const container = document.getElementById('insightsList');
+  container.innerHTML = insights.map(i => `
+    <div style="flex:1;min-width:220px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;display:flex;align-items:flex-start;gap:10px">
+      <i class="fa-solid ${i.icon}" style="color:${i.color};margin-top:2px;flex-shrink:0"></i>
+      <span style="font-size:13px;color:var(--text-secondary)">${i.text}</span>
+    </div>`).join('');
+}
+
+loadAnalytics();
+</script>
+{% endblock %}

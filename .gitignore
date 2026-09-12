@@ -1,0 +1,34 @@
+# --- Secrets ---
+.env
+
+# --- Database ---
+*.db
+*.sqlite3
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+venv/
+env/
+*.egg-info/
+
+# --- AI models (auto-downloaded, don't commit) ---
+*.task
+*.pt
+
+# --- Runtime-generated content ---
+static/uploads/
+static/events/
+static/exports/
+static/clips/
+
+# --- Editor / OS junk ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

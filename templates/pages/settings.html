@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block breadcrumb %}Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title"><i class="fa-solid fa-gear"></i> Settings</div>
+  <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+  <!-- Voice Alert Settings -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-volume-high"></i> Voice Alerts
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="toggle-wrap" style="margin-bottom:16px">
+        <div class="toggle on" id="voiceToggle"
+             onclick="toggleVoice(this)"></div>
+        <div>
+          <label class="toggle-label">Enable Voice Alerts</label>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            Speaks "Fall detected in Ward X" when a fall is confirmed.<br>
+            Uses built-in Windows voice engine — no internet required.
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="testVoice()">
+        <i class="fa-solid fa-play"></i> Test Voice
+      </button>
+      <span id="voiceTestResult"
+            style="font-size:12px;color:var(--text-muted);margin-left:8px"></span>
+    </div>
+  </div>
+
+  <!-- Reports -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-file-lines"></i> Activity Reports
+      </div>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+        Generate daily or weekly fall activity reports. Reports open in a new
+        tab and can be printed or saved as PDF using your browser.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="/api/reports/daily" target="_blank" class="btn btn-primary btn-sm">
+          <i class="fa-solid fa-calendar-day"></i> Today's Report
+        </a>
+        <a href="/api/reports/weekly" target="_blank" class="btn btn-ghost btn-sm">
+          <i class="fa-solid fa-calendar-week"></i> Weekly Report
+        </a>
+        <a href="/api/reports/download/daily" class="btn btn-ghost btn-sm">
+          <i class="fa-solid fa-download"></i> Download Daily
+        </a>
+        <a href="/api/reports/download/weekly" class="btn btn-ghost btn-sm">
+          <i class="fa-solid fa-download"></i> Download Weekly
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Performance Settings -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-gauge-high"></i> Performance</div>
+      <span style="font-size:11px;color:var(--text-muted)">Changes apply instantly</span>
+    </div>
+    <div class="card-body">
+
+      <!-- Object Detector toggle -->
+      <div class="toggle-wrap" style="margin-bottom:20px">
+        <div class="toggle" id="objectDetectorToggle"
+             onclick="togglePipelineFeature('object_detector', this)"></div>
+        <div>
+          <label class="toggle-label">YOLO Object Detector</label>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            Detects furniture to avoid false alerts. Costs 25–40ms per frame.<br>
+            <span style="color:var(--warning)">Turn OFF if lagging</span> — fall detection still works.
+          </div>
+        </div>
+      </div>
+
+      <!-- Floor Mapper toggle -->
+      <div class="toggle-wrap" style="margin-bottom:20px">
+        <div class="toggle on" id="floorMapperToggle"
+             onclick="togglePipelineFeature('floor_mapper', this)"></div>
+        <div>
+          <label class="toggle-label">Floor Mapper</label>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            Builds floor mask to distinguish floor from furniture contact.<br>
+            <span style="color:var(--warning)">Turn OFF for max speed</span> — reduces accuracy slightly.
+          </div>
+        </div>
+      </div>
+
+      <!-- Pose skip toggle -->
+      <div class="toggle-wrap" style="margin-bottom:4px">
+        <div class="toggle" id="poseSkipToggle"
+             onclick="togglePipelineFeature('pose_skip', this)"></div>
+        <div>
+          <label class="toggle-label">Skip Every 2nd Frame</label>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+            Runs pose detection on alternate frames only. Doubles speed,<br>
+            minimal accuracy loss for fall detection (falls take 300ms+).
+          </div>
+        </div>
+      </div>
+
+      <!-- Live status -->
+      <div id="perfStatus" style="margin-top:16px;padding:10px;background:var(--bg-secondary);
+           border-radius:var(--radius-sm);font-size:12px;color:var(--text-muted);display:none">
+      </div>
+    </div>
+  </div>
+
+  <!-- Detection Settings -->
+  <div class="card">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-brain"></i> Detection Settings</div></div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">
+          Fall Confidence Threshold: <strong id="thresholdDisplay">{{ (settings.confidence_threshold * 100)|int }}%</strong>
+        </label>
+        <input type="range" id="confidenceThreshold" min="60" max="99" step="1"
+               value="{{ (settings.confidence_threshold * 100)|int }}"
+               oninput="document.getElementById('thresholdDisplay').textContent=this.value+'%'">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px">
+          <span>60% (sensitive)</span><span>99% (conservative)</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          Alert Cooldown: <strong id="cooldownDisplay">{{ settings.alert_cooldown }}s</strong>
+        </label>
+        <input type="range" id="alertCooldown" min="10" max="120" step="5"
+               value="{{ settings.alert_cooldown }}"
+               oninput="document.getElementById('cooldownDisplay').textContent=this.value+'s'">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          Inactivity Threshold: <strong id="inactivityDisplay">{{ settings.inactivity_threshold }}s</strong>
+        </label>
+        <input type="range" id="inactivityThreshold" min="2" max="15" step="1"
+               value="{{ settings.inactivity_threshold }}"
+               oninput="document.getElementById('inactivityDisplay').textContent=this.value+'s'">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Default Camera Index</label>
+        <select id="cameraIndex" class="form-control">
+          <option value="0" {% if settings.camera_index == 0 %}selected{% endif %}>Camera 0 (Default)</option>
+          <option value="1" {% if settings.camera_index == 1 %}selected{% endif %}>Camera 1</option>
+          <option value="2" {% if settings.camera_index == 2 %}selected{% endif %}>Camera 2</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Alert Settings -->
+  <div class="card">
+    <div class="card-header"><div class="card-title"><i class="fa-solid fa-bell"></i> Alert Settings</div></div>
+    <div class="card-body">
+      {% set toggles = [
+        ('enable_sound',        'enableSound',        'Sound Alert',            settings.enable_sound),
+        ('enable_browser_notif','enableBrowserNotif', 'Browser Notification',   settings.enable_browser_notif),
+        ('enable_sms',          'enableSms',          'SMS Alert (Twilio)',      settings.enable_sms),
+        ('enable_email',        'enableEmail',        'Email Alert',            settings.enable_email),
+        ('dark_mode',           'darkMode',           'Dark Mode',              settings.dark_mode),
+      ] %}
+      {% for field, js_id, label, value in toggles %}
+      <div class="toggle-wrap" style="margin-bottom:16px">
+        <div class="toggle {% if value %}on{% endif %}" id="{{ js_id }}Toggle" onclick="toggleSwitch('{{ js_id }}')"></div>
+        <input type="hidden" id="{{ js_id }}" value="{{ '1' if value else '0' }}">
+        <label class="toggle-label">{{ label }}</label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Emergency Contacts -->
+  <div class="card" style="grid-column:1/-1" id="emergencyContacts">
+    <div class="card-header">
+      <div class="card-title"><i class="fa-solid fa-address-book"></i> Emergency Contacts</div>
+      <button class="btn btn-primary btn-sm" onclick="showAddContact()">
+        <i class="fa-solid fa-plus"></i> Add Contact
+      </button>
+    </div>
+    <div class="card-body">
+      <div id="contactsList">
+        {% if contacts %}
+          {% for c in contacts %}
+          <div class="contact-card" id="contact-{{ c.id }}">
+            <div class="contact-avatar">{{ c.name[0] }}</div>
+            <div style="flex:1">
+              <div class="contact-name">{{ c.name }} <span style="font-size:11px;color:var(--text-muted)">{{ c.relationship }}</span></div>
+              <div class="contact-rel">{{ c.phone or '' }} {% if c.email %}• {{ c.email }}{% endif %}</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="deleteContact({{ c.id }})"><i class="fa-solid fa-trash"></i></button>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p id="noContactsMsg" style="font-size:13px;color:var(--text-muted);text-align:center;padding:12px">No contacts added yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add Contact Modal -->
+<div class="modal-overlay hidden" id="addContactModal">
+  <div class="modal">
+    <div class="modal-header"><h2>Add Emergency Contact</h2></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Full Name *</label>
+          <input type="text" id="cName" class="form-control" placeholder="Jane Doe">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Relationship</label>
+          <input type="text" id="cRelationship" class="form-control" placeholder="Family / Caregiver">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="tel" id="cPhone" class="form-control" placeholder="+91 9876543210">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="cEmail" class="form-control" placeholder="jane@example.com">
+        </div>
+      </div>
+      <div class="flex gap-12" style="margin-top:4px">
+        <div class="toggle-wrap">
+          <div class="toggle on" id="cSmsToggle" onclick="toggleSwitch('cSms')"></div>
+          <input type="hidden" id="cSms" value="1">
+          <label class="toggle-label">SMS</label>
+        </div>
+        <div class="toggle-wrap">
+          <div class="toggle on" id="cEmailToggle" onclick="toggleSwitch('cEmail2')"></div>
+          <input type="hidden" id="cEmail2" value="1">
+          <label class="toggle-label">Email</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="addContact()"><i class="fa-solid fa-plus"></i> Add</button>
+      <button class="btn btn-ghost" onclick="dismissModal('addContactModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+// ── Pipeline feature toggles (live, no restart needed) ────────
+async function togglePipelineFeature(feature, el) {
+  el.classList.toggle('on');
+  const enabled = el.classList.contains('on');
+
+  try {
+    const res  = await fetch('/api/detection/toggle', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ feature, enabled })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(`${data.label} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+      updatePerfStatus(data.status);
+    } else {
+      el.classList.toggle('on');  // revert on failure
+      showToast('Failed to update: ' + (data.error || 'unknown'), 'error');
+    }
+  } catch(e) {
+    el.classList.toggle('on');
+    showToast('Connection error', 'error');
+  }
+}
+
+function updatePerfStatus(status) {
+  const el = document.getElementById('perfStatus');
+  if (!el || !status) return;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <strong>Current pipeline:</strong><br>
+    Object detector: <span style="color:${status.object_detector ? 'var(--success)' : 'var(--warning)'}">${status.object_detector ? '● ON' : '○ OFF'}</span> &nbsp;
+    Floor mapper: <span style="color:${status.floor_mapper ? 'var(--success)' : 'var(--warning)'}">${status.floor_mapper ? '● ON' : '○ OFF'}</span> &nbsp;
+    Frame skip: <span style="color:${status.pose_skip ? 'var(--success)' : 'var(--warning)'}">${status.pose_skip ? '● ON' : '○ OFF'}</span>
+  `;
+}
+
+// Load current toggle state on page load
+async function loadPerfToggles() {
+  try {
+    const res  = await fetch('/api/detection/pipeline_status');
+    const data = await res.json();
+    if (!data.status) return;
+    const s = data.status;
+    if (s.object_detector) document.getElementById('objectDetectorToggle')?.classList.add('on');
+    else                   document.getElementById('objectDetectorToggle')?.classList.remove('on');
+    if (s.floor_mapper)    document.getElementById('floorMapperToggle')?.classList.add('on');
+    else                   document.getElementById('floorMapperToggle')?.classList.remove('on');
+    if (s.pose_skip)       document.getElementById('poseSkipToggle')?.classList.add('on');
+    else                   document.getElementById('poseSkipToggle')?.classList.remove('on');
+    updatePerfStatus(s);
+  } catch(e) {}
+}
+document.addEventListener('DOMContentLoaded', loadPerfToggles);
+
+// ── Voice alert ───────────────────────────────────────────────
+async function toggleVoice(el) {
+  el.classList.toggle('on');
+  const enabled = el.classList.contains('on');
+  try {
+    const res  = await fetch('/api/voice/toggle', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ enabled })
+    });
+    const data = await res.json();
+    if (!data.success) {
+      el.classList.toggle('on');
+      showToast(data.message || 'Voice not available', 'error');
+    } else {
+      showToast(`Voice alerts ${enabled ? 'enabled' : 'disabled'}`, 'success');
+    }
+  } catch(e) {
+    el.classList.toggle('on');
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+
+async function testVoice() {
+  const el = document.getElementById('voiceTestResult');
+  el.textContent = 'Speaking...';
+  try {
+    const res  = await fetch('/api/voice/test', { method: 'POST' });
+    const data = await res.json();
+    el.textContent = data.success ? '✓ Done' : '✗ ' + data.message;
+  } catch(e) {
+    el.textContent = '✗ Error';
+  }
+  setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+function toggleSwitch(id) {
+  const toggle = document.getElementById(id + 'Toggle');
+  const input  = document.getElementById(id);
+  if (!toggle) return;
+  toggle.classList.toggle('on');
+  if (input) input.value = toggle.classList.contains('on') ? '1' : '0';
+  if (id === 'darkMode') {
+    applyTheme(toggle.classList.contains('on') ? 'dark' : 'light');
+  }
+}
+
+async function saveSettings() {
+  const payload = {
+    confidence_threshold: document.getElementById('confidenceThreshold').value / 100,
+    alert_cooldown:       parseInt(document.getElementById('alertCooldown').value),
+    inactivity_threshold: parseInt(document.getElementById('inactivityThreshold').value),
+    camera_index:         parseInt(document.getElementById('cameraIndex').value),
+    enable_sound:         document.getElementById('enableSound').value === '1',
+    enable_browser_notif: document.getElementById('enableBrowserNotif').value === '1',
+    enable_sms:           document.getElementById('enableSms').value === '1',
+    enable_email:         document.getElementById('enableEmail').value === '1',
+    dark_mode:            document.getElementById('darkMode').value === '1',
+  };
+  try {
+    const res = await fetch('/settings/save', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await res.json();
+    if (d.success) showToast('Settings saved!', 'success');
+  } catch(e) { showToast('Save failed', 'error'); }
+}
+
+function showAddContact() { showModal('addContactModal'); }
+
+async function addContact() {
+  const name = document.getElementById('cName').value.trim();
+  if (!name) { showToast('Name is required', 'error'); return; }
+  const payload = {
+    name, relationship: document.getElementById('cRelationship').value,
+    phone: document.getElementById('cPhone').value,
+    email: document.getElementById('cEmail').value,
+    notify_sms:   document.getElementById('cSms').value === '1',
+    notify_email: document.getElementById('cEmail2').value === '1'
+  };
+  try {
+    const res = await fetch('/settings/contacts/add', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (res.status === 401 || res.redirected) {
+      showToast('Your session expired — please log in again', 'error');
+      return;
+    }
+    let d;
+    try { d = await res.json(); }
+    catch { showToast('Server returned an unexpected response (not logged in?)', 'error'); return; }
+
+    if (d.success) {
+      dismissModal('addContactModal');
+      const c = d.contact;
+      const noMsg = document.getElementById('noContactsMsg');
+      if (noMsg) noMsg.remove();
+      const list = document.getElementById('contactsList');
+      const div = document.createElement('div');
+      div.className = 'contact-card'; div.id = `contact-${c.id}`;
+      div.innerHTML = `
+        <div class="contact-avatar">${c.name[0]}</div>
+        <div style="flex:1">
+          <div class="contact-name">${c.name} <span style="font-size:11px;color:var(--text-muted)">${c.relationship||''}</span></div>
+          <div class="contact-rel">${c.phone||''} ${c.email ? '• '+c.email : ''}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="deleteContact(${c.id})"><i class="fa-solid fa-trash"></i></button>`;
+      list.appendChild(div);
+      showToast('Contact added', 'success');
+    } else {
+      showToast(d.error || 'Failed to add contact', 'error');
+    }
+  } catch(e) { showToast('Network error — is the server running?', 'error'); }
+}
+
+async function deleteContact(id) {
+  if (!confirm('Remove this contact?')) return;
+  try {
+    await fetch(`/settings/contacts/delete/${id}`, { method: 'DELETE' });
+    document.getElementById(`contact-${id}`)?.remove();
+    showToast('Contact removed', 'success');
+  } catch(e) { showToast('Failed to remove', 'error'); }
+}
+
+// Deep-link support: coming here from "Add Contact" on another page
+// (?add_contact=1) scrolls straight to the section and opens the form,
+// instead of leaving you to hunt for it on a long settings page.
+if (new URLSearchParams(location.search).get('add_contact') === '1') {
+  document.getElementById('emergencyContacts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showAddContact();
+}
+</script>
+{% endblock %}

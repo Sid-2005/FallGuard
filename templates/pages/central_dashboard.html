@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+{% block title %}Central Dashboard{% endblock %}
+{% block breadcrumb %}Central Monitoring Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Header stats -->
+<div class="stats-grid">
+  <div class="stat-card danger">
+    <div class="stat-icon red"><i class="fa-solid fa-person-falling-burst"></i></div>
+    <div class="stat-value" id="totalFalls">0</div>
+    <div class="stat-label">Total Falls Today</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon blue"><i class="fa-solid fa-video"></i></div>
+    <div class="stat-value" id="activeCams">0</div>
+    <div class="stat-label">Active Cameras</div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon green"><i class="fa-solid fa-users"></i></div>
+    <div class="stat-value" id="totalPersons">0</div>
+    <div class="stat-label">People Detected</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple"><i class="fa-solid fa-triangle-exclamation"></i></div>
+    <div class="stat-value" id="unresolvedAlerts">0</div>
+    <div class="stat-label">Unresolved Alerts</div>
+  </div>
+</div>
+
+<!-- Camera grid -->
+<div id="cameraGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:20px">
+
+  {% if nodes %}
+    {% for node in nodes %}
+    <div class="card" id="cam-card-{{ node.id }}" style="position:relative">
+      <div class="card-header" style="padding:10px 16px">
+        <div class="card-title" style="font-size:13px">
+          <span id="cam-dot-{{ node.id }}"
+                style="display:inline-block;width:8px;height:8px;border-radius:50%;
+                       background:#555;margin-right:6px"></span>
+          <i class="fa-solid fa-video" style="margin-right:4px"></i>
+          {{ node.name }}
+          <span style="font-size:10px;color:var(--text-muted);font-weight:400;margin-left:4px">
+            {{ node.location }}
+          </span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span id="cam-fps-{{ node.id }}"
+                style="font-size:10px;color:var(--text-muted)">— fps</span>
+          <span id="cam-persons-{{ node.id }}"
+                style="font-size:10px;color:var(--accent)">0 people</span>
+          <button class="btn btn-ghost btn-sm"
+                  onclick="openFullscreen('{{ node.id }}')"
+                  title="Fullscreen">
+            <i class="fa-solid fa-expand" style="font-size:11px"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Video feed -->
+      <div style="position:relative;background:#0a0e1a;aspect-ratio:4/3;overflow:hidden">
+        <img id="cam-feed-{{ node.id }}"
+             style="width:100%;height:100%;object-fit:cover;display:none">
+        <div id="cam-placeholder-{{ node.id }}"
+             style="position:absolute;inset:0;display:flex;flex-direction:column;
+                    align-items:center;justify-content:center;gap:8px">
+          <i class="fa-solid fa-spinner fa-spin"
+             style="font-size:24px;color:#333"></i>
+          <span style="font-size:12px;color:#444">
+            Connecting to {{ node.url }}…
+          </span>
+        </div>
+
+        <!-- Status badge -->
+        <div id="cam-status-{{ node.id }}"
+             style="position:absolute;top:8px;left:8px;font-size:10px;
+                    padding:2px 8px;border-radius:10px;background:#1a1a2e;
+                    color:#666;border:1px solid #333">
+          Connecting
+        </div>
+
+        <!-- Fall alert flash overlay -->
+        <div id="cam-flash-{{ node.id }}"
+             style="position:absolute;inset:0;border:4px solid transparent;
+                    pointer-events:none;transition:border-color .3s"></div>
+      </div>
+
+      <!-- Per-camera person status -->
+      <div id="cam-persons-grid-{{ node.id }}"
+           style="padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;
+                  min-height:36px;border-top:1px solid var(--border)">
+        <span style="font-size:11px;color:var(--text-muted);line-height:28px">
+          No persons detected
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Empty slots for visual balance -->
+    {% for i in range(4 - nodes|length) %}
+    <div class="card" style="opacity:0.3">
+      <div style="aspect-ratio:4/3;display:flex;flex-direction:column;
+                  align-items:center;justify-content:center;gap:8px">
+        <i class="fa-solid fa-video-slash" style="font-size:32px;color:#333"></i>
+        <span style="font-size:12px;color:#444">Camera slot available</span>
+        <a href="{{ url_for('central.camera_registry') }}"
+           class="btn btn-ghost btn-sm" style="font-size:11px">
+          <i class="fa-solid fa-plus"></i> Add Camera
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <!-- No cameras registered -->
+    <div class="card" style="grid-column:1/-1;padding:60px;text-align:center">
+      <i class="fa-solid fa-video-slash"
+         style="font-size:48px;color:#333;margin-bottom:16px;display:block"></i>
+      <h3 style="color:var(--text-primary);margin-bottom:8px">No cameras registered</h3>
+      <p style="color:var(--text-muted);margin-bottom:20px;font-size:14px">
+        Add camera devices to start monitoring multiple wards
+      </p>
+      <a href="{{ url_for('central.camera_registry') }}" class="btn btn-primary">
+        <i class="fa-solid fa-plus"></i> Add Camera
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Unified alert log -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fa-solid fa-bell"></i> Unified Alert Log
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="clearAlertLog()">
+        <i class="fa-solid fa-trash"></i> Clear
+      </button>
+      <span id="alertCount"
+            style="font-size:11px;color:var(--text-muted);line-height:28px">
+        0 alerts
+      </span>
+    </div>
+  </div>
+  <div class="card-body" style="padding:0">
+    <div id="alertLog"
+         style="max-height:280px;overflow-y:auto">
+      <p id="noAlertsMsg"
+         style="text-align:center;color:var(--text-muted);
+                font-size:13px;padding:24px">
+        <i class="fa-solid fa-check-circle" style="color:var(--success)"></i>
+        No fall alerts — all clear
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Fullscreen modal -->
+<div id="fullscreenModal"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.95);
+            z-index:9999;flex-direction:column">
+  <div style="display:flex;justify-content:space-between;align-items:center;
+              padding:12px 20px;background:#111">
+    <span id="fullscreenTitle"
+          style="font-size:16px;font-weight:600;color:#fff"></span>
+    <button onclick="closeFullscreen()"
+            style="background:none;border:none;color:#fff;
+                   font-size:20px;cursor:pointer">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <img id="fullscreenFeed"
+       style="flex:1;object-fit:contain;width:100%">
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+// ── Camera node data from server ──────────────────────────────
+const NODES = {{ nodes | tojson }};
+const sockets = {};    // node_id → socket connection
+const nodeStats = {};  // node_id → { fps, persons, falls }
+let totalFalls = 0;
+let alertCount = 0;
+
+// Local cameras (phones etc.) are processed by THIS server, not a separate
+// one -- so they share a single socket connection to this page's own
+// origin, and events are filtered by camera_id.
+const localSocket = io({ transports: ['websocket', 'polling'] });
+let localSocketBound = false;
+
+function bindLocalSocketOnce() {
+  if (localSocketBound) return;
+  localSocketBound = true;
+
+  localSocket.on('frame_update', (data) => {
+    if (!data.camera_id || !nodeStats[data.camera_id]) return;
+    if (nodeStats[data.camera_id].connected !== true) {
+      nodeStats[data.camera_id].connected = true;
+      setNodeStatus(data.camera_id, 'Live', '#3fb950');
+      updateActiveCams();
+    }
+    handleFrameUpdate(data.camera_id, data);
+  });
+
+  localSocket.on('fall_alert', (data) => {
+    if (!data.camera_id) return;
+    const node = NODES.find(n => n.id === data.camera_id);
+    if (!node) return;
+    totalFalls++;
+    document.getElementById('totalFalls').textContent = totalFalls;
+    flashCamera(node.id);
+    addAlertToLog(node, data);
+    playAlertSound();
+    if (typeof loadAlertBadge === 'function') loadAlertBadge();
+  });
+}
+
+function handleFrameUpdate(nodeId, data) {
+  const node = NODES.find(n => n.id === nodeId);
+  const feed = document.getElementById(`cam-feed-${nodeId}`);
+  const ph   = document.getElementById(`cam-placeholder-${nodeId}`);
+  if (feed && data.frame) {
+    feed.src           = 'data:image/jpeg;base64,' + data.frame;
+    feed.style.display = 'block';
+    if (ph) ph.style.display = 'none';
+
+    const fsId = document.getElementById('fullscreenModal').dataset.nodeId;
+    if (fsId === nodeId) {
+      document.getElementById('fullscreenFeed').src = feed.src;
+    }
+  }
+
+  nodeStats[nodeId].fps     = data.fps || 0;
+  nodeStats[nodeId].persons = (data.persons || []).length;
+  document.getElementById(`cam-fps-${nodeId}`).textContent =
+    `${Math.round(data.fps || 0)} fps`;
+  document.getElementById(`cam-persons-${nodeId}`).textContent =
+    `${nodeStats[nodeId].persons} people`;
+
+  renderPersonPills(nodeId, data.persons || [], node ? node.name : '');
+  updateTotalPersons();
+}
+
+// ── Connect to all camera nodes ───────────────────────────────
+function connectAll() {
+  NODES.forEach(node => {
+    nodeStats[node.id] = { fps: 0, persons: 0, connected: false };
+    connectNode(node);
+  });
+  updateActiveCams();
+}
+
+function connectNode(node) {
+  // Local cameras (phones/webcams this server pulls directly) ride on the
+  // shared localSocket instead of opening a new connection to node.url,
+  // since there's no separate FallGuard server running on the phone.
+  if (node.is_local) {
+    bindLocalSocketOnce();
+    setNodeStatus(node.id, node.is_running ? 'Live' : 'Stopped',
+                  node.is_running ? '#3fb950' : '#666');
+    return;
+  }
+
+  try {
+    const sock = io(node.url, {
+      transports: ['websocket', 'polling'],
+      timeout: 5000,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
+    });
+    sockets[node.id] = sock;
+
+    sock.on('connect', () => {
+      nodeStats[node.id].connected = true;
+      setNodeStatus(node.id, 'Live', '#3fb950');
+      updateActiveCams();
+      console.log(`Connected: ${node.name}`);
+    });
+
+    sock.on('disconnect', () => {
+      nodeStats[node.id].connected = false;
+      setNodeStatus(node.id, 'Offline', '#f85149');
+      updateActiveCams();
+      // Hide feed, show placeholder
+      const feed = document.getElementById(`cam-feed-${node.id}`);
+      const ph   = document.getElementById(`cam-placeholder-${node.id}`);
+      if (feed) feed.style.display = 'none';
+      if (ph)   ph.style.display   = 'flex';
+    });
+
+    sock.on('connect_error', () => {
+      setNodeStatus(node.id, 'Error', '#f85149');
+    });
+
+    // ── Frame update ──────────────────────────────────────────
+    sock.on('frame_update', (data) => {
+      const feed = document.getElementById(`cam-feed-${node.id}`);
+      const ph   = document.getElementById(`cam-placeholder-${node.id}`);
+      if (feed && data.frame) {
+        feed.src          = 'data:image/jpeg;base64,' + data.frame;
+        feed.style.display = 'block';
+        if (ph) ph.style.display = 'none';
+
+        // Mirror to fullscreen if open
+        const fsId = document.getElementById('fullscreenModal').dataset.nodeId;
+        if (fsId === node.id) {
+          document.getElementById('fullscreenFeed').src = feed.src;
+        }
+      }
+
+      // Update stats
+      nodeStats[node.id].fps     = data.fps || 0;
+      nodeStats[node.id].persons = (data.persons || []).length;
+      document.getElementById(`cam-fps-${node.id}`).textContent =
+        `${Math.round(data.fps || 0)} fps`;
+      document.getElementById(`cam-persons-${node.id}`).textContent =
+        `${nodeStats[node.id].persons} people`;
+
+      // Update person pills
+      renderPersonPills(node.id, data.persons || [], node.name);
+      updateTotalPersons();
+    });
+
+    // ── Fall alert ────────────────────────────────────────────
+    sock.on('fall_alert', (data) => {
+      totalFalls++;
+      document.getElementById('totalFalls').textContent = totalFalls;
+      flashCamera(node.id);
+      addAlertToLog(node, data);
+      playAlertSound();
+      // Flash nav badge
+      if (typeof loadAlertBadge === 'function') loadAlertBadge();
+    });
+
+    // ── Video ended ───────────────────────────────────────────
+    sock.on('video_ended', () => {
+      setNodeStatus(node.id, 'Ended', '#e5c000');
+    });
+
+  } catch(e) {
+    console.error(`Failed to connect to ${node.name}:`, e);
+    setNodeStatus(node.id, 'Error', '#f85149');
+  }
+}
+
+// ── UI helpers ────────────────────────────────────────────────
+function setNodeStatus(nodeId, text, color) {
+  const dot    = document.getElementById(`cam-dot-${nodeId}`);
+  const status = document.getElementById(`cam-status-${nodeId}`);
+  if (dot)    dot.style.background   = color;
+  if (status) {
+    status.textContent  = text;
+    status.style.color  = color;
+    status.style.borderColor = color;
+  }
+}
+
+function flashCamera(nodeId) {
+  const flash = document.getElementById(`cam-flash-${nodeId}`);
+  if (!flash) return;
+  flash.style.borderColor = '#f85149';
+  setTimeout(() => { flash.style.borderColor = 'transparent'; }, 3000);
+}
+
+function renderPersonPills(nodeId, persons, nodeName) {
+  const grid = document.getElementById(`cam-persons-grid-${nodeId}`);
+  if (!grid) return;
+  if (!persons.length) {
+    grid.innerHTML = '<span style="font-size:11px;color:var(--text-muted);line-height:28px">No persons detected</span>';
+    return;
+  }
+  const STAGE_COLOR = ['#3fb950','#e5c000','#f0883e','#f0883e','#f0883e','#f85149'];
+  grid.innerHTML = persons.map(p => `
+    <span style="font-size:10px;padding:3px 8px;border-radius:10px;
+                 background:var(--bg-secondary);border:1px solid var(--border);
+                 color:${STAGE_COLOR[Math.min(p.stage||0,5)]}">
+      P${p.track_id} ${p.posture}
+      ${p.stage >= 5 ? ' ⚠' : ''}
+    </span>`).join('');
+}
+
+function updateActiveCams() {
+  const active = Object.values(nodeStats).filter(s => s.connected).length;
+  document.getElementById('activeCams').textContent = active;
+}
+
+function updateTotalPersons() {
+  const total = Object.values(nodeStats).reduce((s, n) => s + (n.persons||0), 0);
+  document.getElementById('totalPersons').textContent = total;
+}
+
+// ── Alert log ─────────────────────────────────────────────────
+function addAlertToLog(node, data) {
+  alertCount++;
+  document.getElementById('alertCount').textContent = `${alertCount} alert${alertCount>1?'s':''}`;
+  document.getElementById('noAlertsMsg')?.remove();
+
+  const log  = document.getElementById('alertLog');
+  const ts   = new Date().toLocaleTimeString();
+  const conf = Math.round((data.confidence || 0) * 100);
+  const persons = (data.persons||[]).map(p=>`P${p.track_id}`).join(', ') || '—';
+
+  const row = document.createElement('div');
+  row.style.cssText = `display:flex;align-items:center;gap:12px;padding:10px 16px;
+    border-bottom:1px solid var(--border);animation:fadeIn .3s ease`;
+  row.innerHTML = `
+    <div style="width:8px;height:8px;border-radius:50%;background:#f85149;flex-shrink:0"></div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600;color:var(--text-primary)">
+        ⚠ Fall Detected — ${node.name}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+        ${node.location}  ·  Persons: ${persons}  ·  Confidence: ${conf}%
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);white-space:nowrap">${ts}</div>
+    <span style="font-size:10px;padding:2px 8px;border-radius:10px;
+                 background:rgba(248,81,73,0.15);color:#f85149;white-space:nowrap">
+      ${node.name}
+    </span>`;
+  log.insertBefore(row, log.firstChild);
+
+  // Keep max 50 alerts in log
+  while (log.children.length > 50) log.removeChild(log.lastChild);
+}
+
+function clearAlertLog() {
+  const log = document.getElementById('alertLog');
+  log.innerHTML = `<p id="noAlertsMsg"
+    style="text-align:center;color:var(--text-muted);font-size:13px;padding:24px">
+    <i class="fa-solid fa-check-circle" style="color:var(--success)"></i>
+    No fall alerts — all clear</p>`;
+  alertCount = 0;
+  document.getElementById('alertCount').textContent = '0 alerts';
+}
+
+// ── Alert sound ───────────────────────────────────────────────
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [1400, 1800].forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.4 + 0.4);
+      osc.start(ctx.currentTime + i * 0.4);
+      osc.stop(ctx.currentTime + i * 0.4 + 0.4);
+    });
+  } catch(e) {}
+}
+
+// ── Fullscreen ────────────────────────────────────────────────
+function openFullscreen(nodeId) {
+  const node  = NODES.find(n => n.id === nodeId);
+  const modal = document.getElementById('fullscreenModal');
+  modal.style.display = 'flex';
+  modal.dataset.nodeId = nodeId;
+  document.getElementById('fullscreenTitle').textContent =
+    `${node?.name || 'Camera'} — Live Feed`;
+  const feed = document.getElementById(`cam-feed-${nodeId}`);
+  if (feed) document.getElementById('fullscreenFeed').src = feed.src;
+}
+
+function closeFullscreen() {
+  const modal = document.getElementById('fullscreenModal');
+  modal.style.display = 'none';
+  modal.dataset.nodeId = '';
+}
+
+// Close fullscreen on Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeFullscreen();
+});
+
+// ── Start ─────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', connectAll);
+</script>
+
+<style>
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+</style>
+{% endblock %}
