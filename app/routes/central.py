@@ -137,5 +137,16 @@ def delete_node(node_id):
 def toggle_node(node_id):
     node = CameraNode.query.get_or_404(node_id)
     node.enabled = not node.enabled
+    
+    if node.is_local:
+        mgr = _mgr()
+        if mgr:
+            if node.enabled:
+                res = mgr.start(node)
+                node.is_running = bool(res.get('success'))
+            else:
+                mgr.stop(node_id)
+                node.is_running = False
+
     db.session.commit()
     return jsonify({'success': True, 'enabled': node.enabled})

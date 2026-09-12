@@ -290,12 +290,8 @@ async function toggleNode(id) {
     const res  = await fetch(`/api/nodes/${id}/toggle`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      const el = document.getElementById(`status-${id}`);
-      if (el) {
-        el.textContent = data.enabled ? 'Active' : 'Disabled';
-        el.style.color = data.enabled ? '#3fb950' : '#8b949e';
-      }
       showToast(`Camera ${data.enabled ? 'enabled' : 'disabled'}`, 'info');
+      setTimeout(() => location.reload(), 400);
     }
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
