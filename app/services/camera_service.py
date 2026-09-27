@@ -262,7 +262,7 @@ class CameraService:
             # Run detection — simple synchronous call (Project 1 style)
             try:
                 proc   = _resize_frame(frame, max_width=self._detect_max_width)
-                result = self.detector.process_frame(proc)
+                result = self.detector.process_frame(proc, is_file=self._source_is_file)
                 self._last_light = {
                     'activity': result.activity, 'is_fall': result.is_fall,
                     'confidence': round(result.confidence, 3),

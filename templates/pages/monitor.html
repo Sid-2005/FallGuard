@@ -38,8 +38,9 @@
 
         <!-- Source type toggle -->
         <select id="sourceType" class="form-control" style="width:auto;padding:5px 10px;font-size:12px"
-                onchange="toggleSourceUI()">
+          onchange="toggleSourceUI()">
           <option value="webcam">Webcam</option>
+          <option value="phone">Phone / IP Camera</option>
           <option value="file">Video File</option>
         </select>
 
@@ -50,19 +51,20 @@
           <option value="2">Camera 2</option>
         </select>
 
+        <!-- Phone / IP camera stream URL (shown when sourceType=phone) -->
+        <input type="text" id="phoneUrlInput" class="form-control"
+          style="display:none;width:220px;padding:5px 10px;font-size:12px" placeholder="http://192.168.1.42:8080/video">
+
         <!-- Video file picker (hidden by default) -->
         <input type="file" id="videoFilePicker" accept="video/*"
-               style="display:none;font-size:12px;color:var(--text-secondary)"
-               onchange="onVideoFilePicked(this)">
+          style="display:none;font-size:12px;color:var(--text-secondary)" onchange="onVideoFilePicked(this)">
         <span id="videoFileLabel" style="display:none;font-size:11px;color:var(--accent);max-width:140px;
               overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
 
         <button id="startCameraBtn" class="btn btn-primary btn-sm" onclick="handleStart()">
           <i class="fa-solid fa-play"></i> Start
         </button>
-        <button id="stopCameraBtn" class="btn btn-danger btn-sm"
-                onclick="handleStop()"
-                style="display:none">
+        <button id="stopCameraBtn" class="btn btn-danger btn-sm" onclick="handleStop()" style="display:none">
           <i class="fa-solid fa-video-slash"></i> Close Camera
         </button>
         <button class="btn btn-ghost btn-sm" onclick="toggleFloorMask()" title="Toggle floor mask">
@@ -76,9 +78,7 @@
                        background:var(--bg-secondary);border-right:1px solid var(--border);
                        line-height:28px">Quality</span>
           {% for q in [280, 360, 480] %}
-          <button id="qualityBtn{{ q }}"
-                  onclick="setQuality({{ q }})"
-                  style="font-size:11px;padding:4px 10px;border:none;cursor:pointer;
+          <button id="qualityBtn{{ q }}" onclick="setQuality({{ q }})" style="font-size:11px;padding:4px 10px;border:none;cursor:pointer;
                          background:{% if q == 360 %}var(--accent){% else %}var(--bg-secondary){% endif %};
                          color:{% if q == 360 %}#fff{% else %}var(--text-secondary){% endif %};
                          transition:all .2s;border-right:1px solid var(--border)">
@@ -165,16 +165,17 @@
       </div>
       <div class="card-body">
         {% set factors = [
-          ('confPosture',    'Posture (30%)',    'fa-person'),
-          ('confVelocity',   'Velocity (25%)',   'fa-wind'),
-          ('confHeight',     'Height Δ (20%)',   'fa-arrows-up-down'),
-          ('confInactivity', 'Inactivity (15%)', 'fa-hourglass'),
-          ('confContext',    'Context (10%)',    'fa-bed')
+        ('confPosture', 'Posture (30%)', 'fa-person'),
+        ('confVelocity', 'Velocity (25%)', 'fa-wind'),
+        ('confHeight', 'Height Δ (20%)', 'fa-arrows-up-down'),
+        ('confInactivity', 'Inactivity (15%)', 'fa-hourglass'),
+        ('confContext', 'Context (10%)', 'fa-bed')
         ] %}
         {% for id, label, icon in factors %}
         <div class="conf-row">
           <div class="conf-row-header">
-            <span class="conf-row-label"><i class="fa-solid {{ icon }}" style="width:14px;color:var(--accent)"></i> {{ label }}</span>
+            <span class="conf-row-label"><i class="fa-solid {{ icon }}" style="width:14px;color:var(--accent)"></i> {{
+              label }}</span>
             <span class="conf-row-value" id="{{ id }}Val">0%</span>
           </div>
           <div class="conf-track">
@@ -189,23 +190,24 @@
     <div class="card">
       <div class="card-header">
         <div class="card-title"><i class="fa-solid fa-phone-volume"></i> Emergency Contacts</div>
-        <a href="{{ url_for('settings.index') }}?add_contact=1#emergencyContacts" class="btn btn-ghost btn-sm"><i class="fa-solid fa-plus"></i></a>
+        <a href="{{ url_for('settings.index') }}?add_contact=1#emergencyContacts" class="btn btn-ghost btn-sm"><i
+            class="fa-solid fa-plus"></i></a>
       </div>
       <div class="card-body">
         {% if contacts %}
-          {% for c in contacts %}
-          <div class="contact-card">
-            <div class="contact-avatar">{{ c.name[0] }}</div>
-            <div>
-              <div class="contact-name">{{ c.name }}</div>
-              <div class="contact-rel">{{ c.relationship or 'Contact' }} {% if c.phone %}• {{ c.phone }}{% endif %}</div>
-            </div>
+        {% for c in contacts %}
+        <div class="contact-card">
+          <div class="contact-avatar">{{ c.name[0] }}</div>
+          <div>
+            <div class="contact-name">{{ c.name }}</div>
+            <div class="contact-rel">{{ c.relationship or 'Contact' }} {% if c.phone %}• {{ c.phone }}{% endif %}</div>
           </div>
-          {% endfor %}
+        </div>
+        {% endfor %}
         {% else %}
-          <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:12px 0">
-            No contacts added. <a href="{{ url_for('settings.index') }}?add_contact=1#emergencyContacts">Add one →</a>
-          </p>
+        <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:12px 0">
+          No contacts added. <a href="{{ url_for('settings.index') }}?add_contact=1#emergencyContacts">Add one →</a>
+        </p>
         {% endif %}
       </div>
     </div>
@@ -217,7 +219,7 @@
       <div class="card-title"><i class="fa-solid fa-chart-line"></i> Session Metrics</div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-ghost btn-sm" onclick="markGroundTruthFall()"
-                title="Mark a real fall for accuracy tracking" id="markFallBtn">
+          title="Mark a real fall for accuracy tracking" id="markFallBtn">
           <i class="fa-solid fa-flag"></i> Mark Fall
         </button>
         <button class="btn btn-ghost btn-sm" onclick="refreshMetrics()">
@@ -245,8 +247,10 @@
       <span id="personCountBadge" style="font-size:11px;color:var(--text-muted)">0 people detected</span>
     </div>
     <div class="card-body">
-      <div id="personStatusGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
-        <p id="noPersonMsg" style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0;grid-column:1/-1">
+      <div id="personStatusGrid"
+        style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">
+        <p id="noPersonMsg"
+          style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0;grid-column:1/-1">
           <i class="fa-solid fa-eye" style="margin-right:6px"></i>No people detected yet
         </p>
       </div>
@@ -264,7 +268,14 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Time</th><th>Event ID</th><th>Activity</th><th>Person</th><th>Confidence</th><th>Status</th></tr>
+            <tr>
+              <th>Time</th>
+              <th>Event ID</th>
+              <th>Activity</th>
+              <th>Person</th>
+              <th>Confidence</th>
+              <th>Status</th>
+            </tr>
           </thead>
           <tbody id="recentEventsTable">
             {% for e in recent_events %}
@@ -276,9 +287,9 @@
               <td><span class="text-danger font-mono">{{ (e.confidence_total * 100)|int }}%</span></td>
               <td>
                 {% if e.is_resolved %}
-                  <span class="badge badge-success"><i class="fa-solid fa-check"></i> Resolved</span>
+                <span class="badge badge-success"><i class="fa-solid fa-check"></i> Resolved</span>
                 {% else %}
-                  <span class="badge badge-danger"><i class="fa-solid fa-circle-exclamation"></i> Unresolved</span>
+                <span class="badge badge-danger"><i class="fa-solid fa-circle-exclamation"></i> Unresolved</span>
                 {% endif %}
               </td>
             </tr>
@@ -287,11 +298,11 @@
         </table>
       </div>
       {% else %}
-        <div id="recentEventsList" style="display:flex;flex-direction:column;gap:8px">
-          <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0">
-            <i class="fa-solid fa-check-circle" style="color:var(--success)"></i> No fall events recorded yet.
-          </p>
-        </div>
+      <div id="recentEventsList" style="display:flex;flex-direction:column;gap:8px">
+        <p style="font-size:13px;color:var(--text-muted);text-align:center;padding:20px 0">
+          <i class="fa-solid fa-check-circle" style="color:var(--success)"></i> No fall events recorded yet.
+        </p>
+      </div>
       {% endif %}
     </div>
   </div>
@@ -301,181 +312,186 @@
 
 {% block extra_js %}
 <script>
-// ── Source UI & camera control ───────────────────────────────
-let _cameraRunning = false;
-let _pickedFile    = null;
+  // ── Source UI & camera control ───────────────────────────────
+  let _cameraRunning = false;
+  let _pickedFile = null;
 
-function toggleSourceUI() {
-  const type = document.getElementById('sourceType').value;
-  document.getElementById('cameraSelect').style.display    = (type === 'webcam') ? '' : 'none';
-  document.getElementById('videoFilePicker').style.display = (type === 'file')   ? '' : 'none';
-  document.getElementById('videoFileLabel').style.display  = (type === 'file')   ? '' : 'none';
-  if (type === 'file') document.getElementById('videoFilePicker').click();
-}
-
-function onVideoFilePicked(input) {
-  const file = input.files[0];
-  if (!file) return;
-  _pickedFile = file;
-  document.getElementById('videoFileLabel').textContent = file.name;
-}
-
-// ── Start ─────────────────────────────────────────────────────
-async function handleStart() {
-  if (_cameraRunning) return;
-  const type = document.getElementById('sourceType').value;
-  if (type === 'file') {
-    if (!_pickedFile) { showToast('Please select a video file first', 'error'); return; }
-    await uploadAndPlay(_pickedFile);
-  } else {
-    const idx = parseInt(document.getElementById('cameraSelect').value);
-    await startWebcam(idx);
+  function toggleSourceUI() {
+    const type = document.getElementById('sourceType').value;
+    document.getElementById('cameraSelect').style.display = (type === 'webcam') ? '' : 'none';
+    document.getElementById('phoneUrlInput').style.display = (type === 'phone') ? '' : 'none';
+    document.getElementById('videoFilePicker').style.display = (type === 'file') ? '' : 'none';
+    document.getElementById('videoFileLabel').style.display = (type === 'file') ? '' : 'none';
+    if (type === 'file') document.getElementById('videoFilePicker').click();
   }
-}
 
-async function startWebcam(index) {
-  _setStarting();
-  try {
-    const res  = await fetch('/api/camera/start', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ source: index })
-    });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message);
-    _setRunning();
-    showToast('Camera started', 'success');
-  } catch(e) {
-    _setStopped();
-    showToast('Camera error: ' + e.message, 'error');
+  function onVideoFilePicked(input) {
+    const file = input.files[0];
+    if (!file) return;
+    _pickedFile = file;
+    document.getElementById('videoFileLabel').textContent = file.name;
   }
-}
 
-async function uploadAndPlay(file) {
-  _setStarting('Uploading…');
-  showToast('Uploading ' + file.name + '…', 'info');
-  const fd = new FormData();
-  fd.append('file', file);
-  try {
-    const res  = await fetch('/api/camera/upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message);
-    _setRunning();
-    showToast('Playing: ' + file.name, 'success');
-  } catch(e) {
-    _setStopped();
-    showToast('Upload failed: ' + e.message, 'error');
-  }
-}
-
-// ── Stop ──────────────────────────────────────────────────────
-async function handleStop() {
-  try {
-    await fetch('/api/camera/stop', { method: 'POST' });
-  } catch(e) { /* best effort */ }
-  _setStopped();
-  showToast('Camera stopped', 'info');
-}
-
-// ── UI state helpers ──────────────────────────────────────────
-function _setStarting(label) {
-  const startBtn = document.getElementById('startCameraBtn');
-  const stopBtn  = document.getElementById('stopCameraBtn');
-  if (startBtn) {
-    startBtn.disabled   = true;
-    startBtn.innerHTML  = `<i class="fa-solid fa-spinner fa-spin"></i> ${label || 'Starting…'}`;
-  }
-  if (stopBtn) stopBtn.style.display = 'none';
-}
-
-function _setRunning() {
-  _cameraRunning = true;
-  const startBtn = document.getElementById('startCameraBtn');
-  const stopBtn  = document.getElementById('stopCameraBtn');
-  const ph       = document.getElementById('cameraPlaceholder');
-  if (startBtn) { startBtn.disabled = true; startBtn.style.display = 'none'; }
-  if (stopBtn)  { stopBtn.style.display = ''; }
-  if (ph)       ph.style.display = 'none';
-  setNavLive(true);
-  setSystemStatus('online', 'Monitoring');
-}
-
-function _setStopped() {
-  _cameraRunning = false;
-  const startBtn = document.getElementById('startCameraBtn');
-  const stopBtn  = document.getElementById('stopCameraBtn');
-  const img      = document.getElementById('cameraFeed');
-  const ph       = document.getElementById('cameraPlaceholder');
-  if (startBtn) {
-    startBtn.disabled   = false;
-    startBtn.style.display = '';
-    startBtn.innerHTML  = '<i class="fa-solid fa-play"></i> Start';
-  }
-  if (stopBtn)  stopBtn.style.display = 'none';
-  if (img)      { img.src = ''; img.style.display = 'none'; }
-  if (ph)       ph.style.display = 'flex';
-  document.getElementById('liveBadge').style.display = 'none';
-  document.getElementById('fpsBadge').style.display  = 'none';
-  setNavLive(false);
-  setSystemStatus('offline', 'Stopped');
-  document.getElementById('statPersons').textContent = '0';
-  renderPersonCards([]);
-}
-
-// Keep _resetCameraUI as alias for video_ended SocketIO event
-function _resetCameraUI() { _setStopped(); }
-
-// ── Floor mask toggle ───────────────────────────────────────
-async function toggleFloorMask() {
-  const r = await fetch('/api/detection/floor_mask', { method:'POST' });
-  const d = await r.json();
-  showToast(`Floor mask ${d.floor_mask ? 'ON' : 'OFF'}`, 'info');
-}
-
-// ── Multi-person card renderer ──────────────────────────────
-const STAGE_LABELS  = ['Normal','Suspicious','Descent','Impact','Lying','CONFIRMED'];
-const STAGE_COLOURS = ['var(--success)','#e5c000','var(--warning)','var(--warning)','var(--warning)','var(--danger)'];
-
-function renderPersonCards(persons) {
-  const grid  = document.getElementById('personStatusGrid');
-  const noMsg = document.getElementById('noPersonMsg');
-  const badge = document.getElementById('personCountBadge');
-  const statP = document.getElementById('statPersons');
-  if (!grid) return;
-
-  const n = persons ? persons.length : 0;
-  if (badge)  badge.textContent = `${n} ${n===1?'person':'people'} detected`;
-  if (statP)  statP.textContent = n;
-
-  if (!n) {
-    grid.innerHTML = '';
-    if (noMsg) { noMsg.style.display=''; grid.appendChild(noMsg); }
-    return;
-  }
-  if (noMsg) noMsg.style.display='none';
-
-  // Stable update: only rebuild if person set changed
-  const existing = new Set([...grid.querySelectorAll('.person-card')].map(el=>el.dataset.tid));
-  const incoming = new Set(persons.map(p=>String(p.track_id)));
-  // Remove cards for people no longer tracked
-  grid.querySelectorAll('.person-card').forEach(el => {
-    if (!incoming.has(el.dataset.tid)) el.remove();
-  });
-
-  persons.forEach(p => {
-    const stageIdx = Math.min(p.stage || 0, 5);
-    const colour   = p.is_resting ? 'var(--text-muted)'
-                   : STAGE_COLOURS[stageIdx];
-    const bgRisk   = p.stage >= 5 ? 'rgba(220,50,50,0.08)' : '';
-
-    let card = grid.querySelector(`.person-card[data-tid="${p.track_id}"]`);
-    if (!card) {
-      card = document.createElement('div');
-      card.className = 'person-card';
-      card.dataset.tid = p.track_id;
-      grid.appendChild(card);
+  // ── Start ─────────────────────────────────────────────────────
+  async function handleStart() {
+    if (_cameraRunning) return;
+    const type = document.getElementById('sourceType').value;
+    if (type === 'file') {
+      if (!_pickedFile) { showToast('Please select a video file first', 'error'); return; }
+      await uploadAndPlay(_pickedFile);
+    } else if (type === 'phone') {
+      const url = document.getElementById('phoneUrlInput').value.trim();
+      if (!url) { showToast('Enter the phone stream URL (e.g. IP Webcam app)', 'error'); return; }
+      await startWebcam(url);
+    } else {
+      const idx = parseInt(document.getElementById('cameraSelect').value);
+      await startWebcam(idx);
     }
-    card.style.background = bgRisk || 'var(--bg-secondary)';
-    card.innerHTML = `
+  }
+
+  async function startWebcam(source) {
+    _setStarting();
+    try {
+      const res = await fetch('/api/camera/start', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: source })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      _setRunning();
+      showToast('Camera started', 'success');
+    } catch (e) {
+      _setStopped();
+      showToast('Camera error: ' + e.message, 'error');
+    }
+  }
+
+  async function uploadAndPlay(file) {
+    _setStarting('Uploading…');
+    showToast('Uploading ' + file.name + '…', 'info');
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/camera/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      _setRunning();
+      showToast('Playing: ' + file.name, 'success');
+    } catch (e) {
+      _setStopped();
+      showToast('Upload failed: ' + e.message, 'error');
+    }
+  }
+
+  // ── Stop ──────────────────────────────────────────────────────
+  async function handleStop() {
+    try {
+      await fetch('/api/camera/stop', { method: 'POST' });
+    } catch (e) { /* best effort */ }
+    _setStopped();
+    showToast('Camera stopped', 'info');
+  }
+
+  // ── UI state helpers ──────────────────────────────────────────
+  function _setStarting(label) {
+    const startBtn = document.getElementById('startCameraBtn');
+    const stopBtn = document.getElementById('stopCameraBtn');
+    if (startBtn) {
+      startBtn.disabled = true;
+      startBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${label || 'Starting…'}`;
+    }
+    if (stopBtn) stopBtn.style.display = 'none';
+  }
+
+  function _setRunning() {
+    _cameraRunning = true;
+    const startBtn = document.getElementById('startCameraBtn');
+    const stopBtn = document.getElementById('stopCameraBtn');
+    const ph = document.getElementById('cameraPlaceholder');
+    if (startBtn) { startBtn.disabled = true; startBtn.style.display = 'none'; }
+    if (stopBtn) { stopBtn.style.display = ''; }
+    if (ph) ph.style.display = 'none';
+    setNavLive(true);
+    setSystemStatus('online', 'Monitoring');
+  }
+
+  function _setStopped() {
+    _cameraRunning = false;
+    const startBtn = document.getElementById('startCameraBtn');
+    const stopBtn = document.getElementById('stopCameraBtn');
+    const img = document.getElementById('cameraFeed');
+    const ph = document.getElementById('cameraPlaceholder');
+    if (startBtn) {
+      startBtn.disabled = false;
+      startBtn.style.display = '';
+      startBtn.innerHTML = '<i class="fa-solid fa-play"></i> Start';
+    }
+    if (stopBtn) stopBtn.style.display = 'none';
+    if (img) { img.src = ''; img.style.display = 'none'; }
+    if (ph) ph.style.display = 'flex';
+    document.getElementById('liveBadge').style.display = 'none';
+    document.getElementById('fpsBadge').style.display = 'none';
+    setNavLive(false);
+    setSystemStatus('offline', 'Stopped');
+    document.getElementById('statPersons').textContent = '0';
+    renderPersonCards([]);
+  }
+
+  // Keep _resetCameraUI as alias for video_ended SocketIO event
+  function _resetCameraUI() { _setStopped(); }
+
+  // ── Floor mask toggle ───────────────────────────────────────
+  async function toggleFloorMask() {
+    const r = await fetch('/api/detection/floor_mask', { method: 'POST' });
+    const d = await r.json();
+    showToast(`Floor mask ${d.floor_mask ? 'ON' : 'OFF'}`, 'info');
+  }
+
+  // ── Multi-person card renderer ──────────────────────────────
+  const STAGE_LABELS = ['Normal', 'Suspicious', 'Descent', 'Impact', 'Lying', 'CONFIRMED'];
+  const STAGE_COLOURS = ['var(--success)', '#e5c000', 'var(--warning)', 'var(--warning)', 'var(--warning)', 'var(--danger)'];
+
+  function renderPersonCards(persons) {
+    const grid = document.getElementById('personStatusGrid');
+    const noMsg = document.getElementById('noPersonMsg');
+    const badge = document.getElementById('personCountBadge');
+    const statP = document.getElementById('statPersons');
+    if (!grid) return;
+
+    const n = persons ? persons.length : 0;
+    if (badge) badge.textContent = `${n} ${n === 1 ? 'person' : 'people'} detected`;
+    if (statP) statP.textContent = n;
+
+    if (!n) {
+      grid.innerHTML = '';
+      if (noMsg) { noMsg.style.display = ''; grid.appendChild(noMsg); }
+      return;
+    }
+    if (noMsg) noMsg.style.display = 'none';
+
+    // Stable update: only rebuild if person set changed
+    const existing = new Set([...grid.querySelectorAll('.person-card')].map(el => el.dataset.tid));
+    const incoming = new Set(persons.map(p => String(p.track_id)));
+    // Remove cards for people no longer tracked
+    grid.querySelectorAll('.person-card').forEach(el => {
+      if (!incoming.has(el.dataset.tid)) el.remove();
+    });
+
+    persons.forEach(p => {
+      const stageIdx = Math.min(p.stage || 0, 5);
+      const colour = p.is_resting ? 'var(--text-muted)'
+        : STAGE_COLOURS[stageIdx];
+      const bgRisk = p.stage >= 5 ? 'rgba(220,50,50,0.08)' : '';
+
+      let card = grid.querySelector(`.person-card[data-tid="${p.track_id}"]`);
+      if (!card) {
+        card = document.createElement('div');
+        card.className = 'person-card';
+        card.dataset.tid = p.track_id;
+        grid.appendChild(card);
+      }
+      card.style.background = bgRisk || 'var(--bg-secondary)';
+      card.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <span style="font-weight:700;color:var(--text-primary)">
           <i class="fa-solid fa-person" style="color:${colour};margin-right:4px"></i>Person ${p.track_id}
@@ -494,102 +510,102 @@ function renderPersonCards(persons) {
       </div>
       <div style="margin-top:8px">
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:3px">
-          <span>Fall risk</span><span style="color:${colour}">${Math.round((p.fall_score||0)*100)}%</span>
+          <span>Fall risk</span><span style="color:${colour}">${Math.round((p.fall_score || 0) * 100)}%</span>
         </div>
         <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
-          <div style="height:100%;width:${Math.round((p.fall_score||0)*100)}%;
+          <div style="height:100%;width:${Math.round((p.fall_score || 0) * 100)}%;
                background:${colour};transition:width .3s"></div>
         </div>
       </div>`;
-  });
-}
+    });
+  }
 
-// ── Override updateLiveStats to also update multi-person grid ──
-const _origUpdateLiveStats = updateLiveStats;
-updateLiveStats = function(data) {
-  _origUpdateLiveStats(data);
-  renderPersonCards(data.persons || []);
-  // Stat badges
-  const fpsEl  = document.getElementById('statFPS');
-  const confEl = document.getElementById('statConf');
-  if (fpsEl)  fpsEl.textContent  = data.fps || 0;
-  if (confEl) confEl.textContent = `${Math.round((data.confidence||0)*100)}%`;
-};
+  // ── Override updateLiveStats to also update multi-person grid ──
+  const _origUpdateLiveStats = updateLiveStats;
+  updateLiveStats = function (data) {
+    _origUpdateLiveStats(data);
+    renderPersonCards(data.persons || []);
+    // Stat badges
+    const fpsEl = document.getElementById('statFPS');
+    const confEl = document.getElementById('statConf');
+    if (fpsEl) fpsEl.textContent = data.fps || 0;
+    if (confEl) confEl.textContent = `${Math.round((data.confidence || 0) * 100)}%`;
+  };
 
-// ── Override handleFallAlert to include per-person detail ──
-const _origHandleFall = handleFallAlert;
-handleFallAlert = function(data) {
-  _origHandleFall(data);
-  // Increment falls stat
-  const el = document.getElementById('statFalls');
-  if (el) el.textContent = parseInt(el.textContent||'0') + 1;
-  // Add row to recent events table
-  _insertRecentRow(data);
-};
+  // ── Override handleFallAlert to include per-person detail ──
+  const _origHandleFall = handleFallAlert;
+  handleFallAlert = function (data) {
+    _origHandleFall(data);
+    // Increment falls stat
+    const el = document.getElementById('statFalls');
+    if (el) el.textContent = parseInt(el.textContent || '0') + 1;
+    // Add row to recent events table
+    _insertRecentRow(data);
+  };
 
-function _insertRecentRow(data) {
-  const tbody = document.getElementById('recentEventsTable');
-  if (!tbody) return;
-  const ts   = new Date(data.timestamp).toLocaleString();
-  const eid  = (data.event_id||'').slice(0,8)+'…';
-  const conf = `${Math.round((data.confidence||0)*100)}%`;
-  const persons = (data.persons||[]).map(p=>`P${p.track_id}`).join(', ') || '—';
-  const tr = document.createElement('tr');
-  tr.innerHTML = `<td>${ts}</td><td class="font-mono" style="font-size:11px">${eid}</td>
-    <td>${data.activity||'—'}</td><td>${persons}</td>
+  function _insertRecentRow(data) {
+    const tbody = document.getElementById('recentEventsTable');
+    if (!tbody) return;
+    const ts = new Date(data.timestamp).toLocaleString();
+    const eid = (data.event_id || '').slice(0, 8) + '…';
+    const conf = `${Math.round((data.confidence || 0) * 100)}%`;
+    const persons = (data.persons || []).map(p => `P${p.track_id}`).join(', ') || '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${ts}</td><td class="font-mono" style="font-size:11px">${eid}</td>
+    <td>${data.activity || '—'}</td><td>${persons}</td>
     <td><span class="text-danger font-mono">${conf}</span></td>
     <td><span class="badge badge-danger"><i class="fa-solid fa-circle-exclamation"></i> Unresolved</span></td>`;
-  tbody.insertBefore(tr, tbody.firstChild);
-  while (tbody.rows.length > 10) tbody.deleteRow(tbody.rows.length-1);
-}
-
-// ── Show live badges when camera starts ──
-const _origCamFeed = updateCameraFeed;
-updateCameraFeed = function(data) {
-  _origCamFeed(data);
-  document.getElementById('liveBadge').style.display = 'flex';
-  document.getElementById('fpsBadge').style.display  = 'flex';
-};
-
-// ── Snapshot ──
-function captureSnapshot() {
-  const img = document.getElementById('cameraFeed');
-  if (!img || !img.src || img.src === window.location.href) {
-    showToast('No live feed to capture', 'error'); return;
+    tbody.insertBefore(tr, tbody.firstChild);
+    while (tbody.rows.length > 10) tbody.deleteRow(tbody.rows.length - 1);
   }
-  const a = document.createElement('a');
-  a.href = img.src;
-  a.download = `snapshot_${Date.now()}.jpg`;
-  a.click();
-  showToast('Snapshot saved', 'success');
-}
 
-// ── Session metrics ──────────────────────────────────────────
-async function refreshMetrics() {
-  try {
-    const r = await fetch('/api/detection/metrics');
-    const d = await r.json();
-    if (d.error) return;
-    renderMetrics(d);
-  } catch(e) {}
-}
+  // ── Show live badges when camera starts ──
+  const _origCamFeed = updateCameraFeed;
+  updateCameraFeed = function (data) {
+    _origCamFeed(data);
+    document.getElementById('liveBadge').style.display = 'flex';
+    document.getElementById('fpsBadge').style.display = 'flex';
+  };
 
-function renderMetrics(d) {
-  const grid = document.getElementById('metricsGrid');
-  if (!grid) return;
+  // ── Snapshot ──
+  function captureSnapshot() {
+    const img = document.getElementById('cameraFeed');
+    if (!img || !img.src || img.src === window.location.href) {
+      showToast('No live feed to capture', 'error'); return;
+    }
+    const a = document.createElement('a');
+    a.href = img.src;
+    a.download = `snapshot_${Date.now()}.jpg`;
+    a.click();
+    showToast('Snapshot saved', 'success');
+  }
 
-  const items = [
-    { label: 'Session',       value: formatDuration(d.session_duration_s) },
-    { label: 'Total Alerts',  value: d.total_alerts ?? '—' },
-    { label: 'Alert Rate/hr', value: d.alert_rate_per_hour != null ? d.alert_rate_per_hour.toFixed(1) : '—' },
-    { label: 'Avg Latency',   value: d.avg_alert_latency_s != null ? d.avg_alert_latency_s.toFixed(2)+'s' : '—' },
-    { label: 'Sensitivity',   value: d.sensitivity    != null ? (d.sensitivity*100).toFixed(1)+'%'    : '—', note: 'needs Mark Fall' },
-    { label: 'Specificity',   value: d.specificity    != null ? (d.specificity*100).toFixed(1)+'%'    : '—', note: 'needs Mark Fall' },
-    { label: 'F1 Score',      value: d.f1_score       != null ? (d.f1_score*100).toFixed(1)+'%'       : '—', note: 'needs Mark Fall' },
-    { label: 'GT Falls',      value: d.gt_falls_marked ?? 0 },
-  ];
+  // ── Session metrics ──────────────────────────────────────────
+  async function refreshMetrics() {
+    try {
+      const r = await fetch('/api/detection/metrics');
+      const d = await r.json();
+      if (d.error) return;
+      renderMetrics(d);
+    } catch (e) { }
+  }
 
-  grid.innerHTML = items.map(item => `
+  function renderMetrics(d) {
+    const grid = document.getElementById('metricsGrid');
+    if (!grid) return;
+
+    const items = [
+      { label: 'Session', value: formatDuration(d.session_duration_s) },
+      { label: 'Total Alerts', value: d.total_alerts ?? '—' },
+      { label: 'Alert Rate/hr', value: d.alert_rate_per_hour != null ? d.alert_rate_per_hour.toFixed(1) : '—' },
+      { label: 'Avg Latency', value: d.avg_alert_latency_s != null ? d.avg_alert_latency_s.toFixed(2) + 's' : '—' },
+      { label: 'Sensitivity', value: d.sensitivity != null ? (d.sensitivity * 100).toFixed(1) + '%' : '—', note: 'needs Mark Fall' },
+      { label: 'Specificity', value: d.specificity != null ? (d.specificity * 100).toFixed(1) + '%' : '—', note: 'needs Mark Fall' },
+      { label: 'F1 Score', value: d.f1_score != null ? (d.f1_score * 100).toFixed(1) + '%' : '—', note: 'needs Mark Fall' },
+      { label: 'GT Falls', value: d.gt_falls_marked ?? 0 },
+    ];
+
+    grid.innerHTML = items.map(item => `
     <div style="background:var(--bg-secondary);border:1px solid var(--border);
                 border-radius:var(--radius-sm);padding:10px 12px;text-align:center">
       <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;
@@ -597,106 +613,123 @@ function renderMetrics(d) {
       <div style="font-size:16px;font-weight:700;color:var(--text-primary)">${item.value}</div>
       ${item.note ? `<div style="font-size:9px;color:var(--text-muted);margin-top:2px">${item.note}</div>` : ''}
     </div>`).join('');
-}
-
-function formatDuration(secs) {
-  if (!secs) return '—';
-  const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60), s = Math.floor(secs%60);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
-}
-
-async function markGroundTruthFall() {
-  const btn = document.getElementById('markFallBtn');
-  if (btn) { btn.style.color = 'var(--danger)'; btn.innerHTML = '<i class="fa-solid fa-flag"></i> Marked!'; }
-  try {
-    await fetch('/api/detection/mark_fall', { method: 'POST' });
-    showToast('Ground truth fall marked for evaluation', 'success');
-  } catch(e) {}
-  setTimeout(() => {
-    if (btn) { btn.style.color = ''; btn.innerHTML = '<i class="fa-solid fa-flag"></i> Mark Fall'; }
-  }, 2000);
-}
-
-// Auto-refresh metrics every 10s when monitoring
-setInterval(() => { if (_cameraRunning) refreshMetrics(); }, 10000);
-
-// Show backend name from detection status
-fetch('/api/detection/status').then(r=>r.json()).then(d=>{
-  const el = document.getElementById('backendLabel');
-  if (el && d.ready) el.textContent = d.backend || 'mediapipe';
-}).catch(()=>{});
-
-// Sync camera running status on page load
-fetch('/api/camera/status').then(r=>r.json()).then(d=>{
-  if (d.is_running) {
-    _setRunning();
-    const sourceTypeSel = document.getElementById('sourceType');
-    if (sourceTypeSel && d.source_is_file) {
-      sourceTypeSel.value = 'file';
-      toggleSourceUI();
-    }
-  } else {
-    _setStopped();
   }
-}).catch(()=>{});
 
-// ── Quality toggle ───────────────────────────────────────────
-let _currentQuality = 360;
+  function formatDuration(secs) {
+    if (!secs) return '—';
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = Math.floor(secs % 60);
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
 
-async function setQuality(px) {
-  try {
-    const res  = await fetch('/api/detection/quality', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ width: px })
-    });
-    const data = await res.json();
-    if (!data.success) { showToast('Quality change failed', 'error'); return; }
+  async function markGroundTruthFall() {
+    const btn = document.getElementById('markFallBtn');
+    if (btn) { btn.style.color = 'var(--danger)'; btn.innerHTML = '<i class="fa-solid fa-flag"></i> Marked!'; }
+    try {
+      await fetch('/api/detection/mark_fall', { method: 'POST' });
+      showToast('Ground truth fall marked for evaluation', 'success');
+    } catch (e) { }
+    setTimeout(() => {
+      if (btn) { btn.style.color = ''; btn.innerHTML = '<i class="fa-solid fa-flag"></i> Mark Fall'; }
+    }, 2000);
+  }
 
-    _currentQuality = px;
+  // Auto-refresh metrics every 10s when monitoring
+  setInterval(() => { if (_cameraRunning) refreshMetrics(); }, 10000);
 
-    // Update button styles
-    [280, 360, 480].forEach(q => {
-      const btn = document.getElementById(`qualityBtn${q}`);
-      if (!btn) return;
-      if (q === px) {
-        btn.style.background = 'var(--accent)';
-        btn.style.color      = '#fff';
-      } else {
-        btn.style.background = 'var(--bg-secondary)';
-        btn.style.color      = 'var(--text-secondary)';
+  // Show backend name from detection status
+  fetch('/api/detection/status').then(r => r.json()).then(d => {
+    const el = document.getElementById('backendLabel');
+    if (el && d.ready) el.textContent = d.backend || 'mediapipe';
+  }).catch(() => { });
+
+  // Sync camera running status on page load
+  fetch('/api/camera/status').then(r => r.json()).then(d => {
+    if (d.is_running) {
+      _setRunning();
+      const sourceTypeSel = document.getElementById('sourceType');
+      if (sourceTypeSel && d.source_is_file) {
+        sourceTypeSel.value = 'file';
+        toggleSourceUI();
       }
-    });
+    } else {
+      _setStopped();
+    }
+  }).catch(() => { });
 
-    showToast(`Quality set to ${px}px`, 'success');
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
+  // ── Quality toggle ───────────────────────────────────────────
+  let _currentQuality = 360;
+
+  async function setQuality(px) {
+    try {
+      const res = await fetch('/api/detection/quality', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ width: px })
+      });
+      const data = await res.json();
+      if (!data.success) { showToast('Quality change failed', 'error'); return; }
+
+      _currentQuality = px;
+
+      // Update button styles
+      [280, 360, 480].forEach(q => {
+        const btn = document.getElementById(`qualityBtn${q}`);
+        if (!btn) return;
+        if (q === px) {
+          btn.style.background = 'var(--accent)';
+          btn.style.color = '#fff';
+        } else {
+          btn.style.background = 'var(--bg-secondary)';
+          btn.style.color = 'var(--text-secondary)';
+        }
+      });
+
+      showToast(`Quality set to ${px}px`, 'success');
+    } catch (e) {
+      showToast('Error: ' + e.message, 'error');
+    }
   }
-}
 
-// ── Uptime counter ──
-let uptimeSecs = 0;
-setInterval(() => {
-  if (!FG.isMonitoring) return;
-  uptimeSecs++;
-  const h = Math.floor(uptimeSecs/3600), m = Math.floor((uptimeSecs%3600)/60);
-  // could update a field if present
-}, 1000);
+  // ── Uptime counter ──
+  let uptimeSecs = 0;
+  setInterval(() => {
+    if (!FG.isMonitoring) return;
+    uptimeSecs++;
+    const h = Math.floor(uptimeSecs / 3600), m = Math.floor((uptimeSecs % 3600) / 60);
+    // could update a field if present
+  }, 1000);
 </script>
 {% endblock %}
 
 <style>
-.mini-stat {
-  background:var(--bg-secondary);border:1px solid var(--border);
-  border-radius:var(--radius-sm);padding:10px 12px;text-align:center;
-}
-.mini-label{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px}
-.mini-val  {font-size:14px;font-weight:600;color:var(--text-primary)}
+  .mini-stat {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    text-align: center;
+  }
 
-.person-card{
-  border:1px solid var(--border);border-radius:var(--radius-sm);
-  padding:14px;transition:background .3s,border-color .3s;
-}
+  .mini-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    margin-bottom: 4px
+  }
+
+  .mini-val {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary)
+  }
+
+  .person-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    transition: background .3s, border-color .3s;
+  }
 </style>

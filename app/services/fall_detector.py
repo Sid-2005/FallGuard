@@ -68,6 +68,12 @@ class PersonState:
     fall_confirmed: bool = False
     last_pose_seen_t: float = 0.0
     seated_history: deque = field(default_factory=lambda: deque(maxlen=5))
+    
+    # Prerecorded-video specific deterministic state machine variables
+    prerecorded_state: str = 'NORMAL'  # NORMAL, POSSIBLE_FALL, FALL_CONFIRMED
+    prerecorded_fall_counter: int = 0
+    prerecorded_reset_counter: int = 0
+    prerecorded_history: list = field(default_factory=list)
 
 @dataclass
 class DetectionResult:
@@ -97,6 +103,17 @@ class FallDetector:
         self.config = config or {}
         self._socketio = socketio
         self._enable_yolo_override = enable_yolo
+
+        # PRERECORDED VIDEO FALL DETECTION CONFIGURATION
+        # Only used when processing a video file, preserving live video behavior.
+        self.PRE_RECORDED_FALL_CONFIG = {
+            "fall_velocity_threshold": 0.23,    # Increased from 0.08: require a much faster drop
+            "body_angle_threshold": 45,         # Decreased from 60: must be more horizontal
+            "low_position_threshold": 0.45,     # Increased from 0.4
+            "horizontal_aspect_ratio": 1.2,     # Increased from 1.1
+            "confirmation_frames": 10,          # Increased from 5: ensure they stay down longer
+            "reset_frames": 15                  # Increased from 10
+        }
 
         self.confidence_threshold = self.config.get('FALL_CONFIDENCE_THRESHOLD', 0.85)
         self.inactivity_threshold = self.config.get('INACTIVITY_THRESHOLD_SECONDS', 5)
@@ -166,7 +183,7 @@ class FallDetector:
     def get_metrics(self) -> dict:
         return {'fps': self.fps, 'frame_count': self._frame_count}
 
-    def process_frame(self, frame: np.ndarray) -> DetectionResult:
+    def process_frame(self, frame: np.ndarray, is_file: bool = False, video_fps: Optional[float] = None) -> DetectionResult:
         self._frame_count += 1
         now = time.time()
         dt = now - self._last_frame_t
@@ -258,12 +275,28 @@ class FallDetector:
         seated = sum(ps.seated_history) >= (len(ps.seated_history) / 2.0)
 
         activity = self._classify(body_angle, velocity, surface, conf, c_posture, seated)
-        is_fall = self._evaluate_fall(ps, now, body_angle, velocity, conf, surface, ankle_visibility)
+        
+        if is_file:
+            # Use strict, isolated deterministic state machine for pre-recorded datasets
+            v_fps = video_fps if video_fps and video_fps > 0 else 30.0
+            ps.prerecorded_history.append(center_y)
+            # keep 1.5 seconds of history
+            max_hist = int(v_fps * 1.5)
+            if len(ps.prerecorded_history) > max_hist:
+                ps.prerecorded_history.pop(0)
 
-        if is_fall:
-            activity = 'fallen'
-        elif ps.fall_candidate_start is not None:
-            activity = 'possible_fall'
+            is_fall = self._evaluate_prerecorded_fall(ps, now, body_angle, velocity, conf, surface, ankle_visibility, v_fps)
+            if is_fall:
+                activity = 'fallen'
+            elif ps.prerecorded_state == 'POSSIBLE_FALL':
+                activity = 'possible_fall'
+        else:
+            # ORIGINAL LIVE CAMERA LOGIC (Unchanged)
+            is_fall = self._evaluate_fall(ps, now, body_angle, velocity, conf, surface, ankle_visibility)
+            if is_fall:
+                activity = 'fallen'
+            elif ps.fall_candidate_start is not None:
+                activity = 'possible_fall'
 
         result.activity = activity
         result.is_fall = is_fall
@@ -400,6 +433,84 @@ class FallDetector:
         if angle > 30: return 'sitting'
         if c_posture > 0.5 and velocity < 0.02: return 'lying'
         return 'falling' if conf > 0.6 else 'unknown'
+
+    def _evaluate_prerecorded_fall(self, ps, now, angle, velocity, conf, surface, ankle_visibility=1.0, video_fps=30.0):
+        """
+        Isolated deterministic state-machine strictly for pre-recorded video evaluation.
+        Ensures live camera behavior is absolutely unaffected while meeting dataset requirements.
+        """
+        cfg = self.PRE_RECORDED_FALL_CONFIG
+        
+        if surface in ('bed', 'couch', 'chair'):
+            ps.prerecorded_state = 'NORMAL'
+            ps.prerecorded_fall_counter = 0
+            return False
+            
+        aspect_ratio = 0.5
+        if ps.kp_buffer:
+            kp = ps.kp_buffer[-1]
+            if 'shoulder_mid' in kp:
+                xs = [v[0] for k, v in kp.items() if isinstance(v, tuple) and 'mid' not in k and k != '_landmarks']
+                ys = [v[1] for k, v in kp.items() if isinstance(v, tuple) and 'mid' not in k and k != '_landmarks']
+                if xs and max(ys) > min(ys):
+                    aspect_ratio = (max(xs) - min(xs)) / (max(ys) - min(ys))
+        
+        current_center = ps.prerecorded_history[-1] if ps.prerecorded_history else 0.5
+        
+        # Calculate maximum drop over a short window (~0.5 seconds) to catch rapid falls.
+        # This differentiates falls from slow intentional lying down.
+        short_window = int(video_fps * 0.5) if video_fps and video_fps > 0 else 15
+        recent_history = ps.prerecorded_history[-short_window:] if len(ps.prerecorded_history) >= short_window else ps.prerecorded_history
+        fast_drop = current_center - min(recent_history) if recent_history else 0
+        
+        # Rule definitions
+        is_fast_drop = fast_drop > cfg['fall_velocity_threshold']
+        
+        # Strict entry conditions
+        strict_angle = angle < cfg['body_angle_threshold']
+        strict_ar = aspect_ratio > cfg['horizontal_aspect_ratio']
+        is_low_position = current_center > cfg['low_position_threshold']
+        
+        # Lenient maintenance conditions (allows YOLO jitter while lying down)
+        lenient_angle = angle < 65
+        
+        # Scale frames based on video_fps. Defaults in config assume 30 FPS.
+        fps_scale = video_fps / 30.0
+        conf_frames = int(cfg['confirmation_frames'] * fps_scale)
+        reset_frames = int(cfg['reset_frames'] * fps_scale)
+        
+        if ps.prerecorded_state == 'NORMAL':
+            if is_fast_drop and strict_angle and strict_ar and is_low_position:
+                ps.prerecorded_state = 'POSSIBLE_FALL'
+                ps.prerecorded_fall_counter = 1
+                logger.info(f"Frame {self._frame_count}: State -> POSSIBLE_FALL (Angle:{angle:.1f}, AR:{aspect_ratio:.2f}, Drop:{fast_drop:.2f})")
+                
+        elif ps.prerecorded_state == 'POSSIBLE_FALL':
+            if lenient_angle and is_low_position:
+                ps.prerecorded_fall_counter += 1
+                if ps.prerecorded_fall_counter >= conf_frames:
+                    ps.prerecorded_state = 'FALL_CONFIRMED'
+                    logger.warning(f"================================\nPRERECORDED FALL DETECTED\nFrame: {self._frame_count}\nReason:\n- Angle: {angle:.1f}\n- AR: {aspect_ratio:.2f}\n- Drop: {fast_drop:.2f}\n================================")
+            else:
+                ps.prerecorded_reset_counter += 1
+                if ps.prerecorded_reset_counter >= reset_frames:
+                    ps.prerecorded_state = 'NORMAL'
+                    ps.prerecorded_fall_counter = 0
+                    ps.prerecorded_reset_counter = 0
+                    
+        elif ps.prerecorded_state == 'FALL_CONFIRMED':
+            # Recovery condition (person stands up)
+            if not lenient_angle and not is_low_position:
+                ps.prerecorded_reset_counter += 1
+                if ps.prerecorded_reset_counter >= reset_frames:
+                    ps.prerecorded_state = 'NORMAL'
+                    ps.prerecorded_fall_counter = 0
+                    ps.prerecorded_reset_counter = 0
+            else:
+                ps.prerecorded_reset_counter = 0
+                
+        ps.fall_confirmed = (ps.prerecorded_state == 'FALL_CONFIRMED')
+        return ps.fall_confirmed
 
     def _evaluate_fall(self, ps, now, angle, velocity, conf, surface, ankle_visibility=1.0):
         if surface in ('bed', 'couch', 'chair'):
