@@ -169,6 +169,16 @@ def main():
             'CLIP_DIR':               'static/clips',
             'ward_name':              '',
             'camera_index':           0,
+            # Alert channels — must be passed through or AlertService silently
+            # skips email/SMS even when .env is filled in correctly.
+            'MAIL_SERVER':           app.config.get('MAIL_SERVER'),
+            'MAIL_PORT':             app.config.get('MAIL_PORT'),
+            'MAIL_USERNAME':         app.config.get('MAIL_USERNAME'),
+            'MAIL_PASSWORD':         app.config.get('MAIL_PASSWORD'),
+            'MAIL_DEFAULT_SENDER':   app.config.get('MAIL_DEFAULT_SENDER'),
+            'TWILIO_ACCOUNT_SID':    app.config.get('TWILIO_ACCOUNT_SID'),
+            'TWILIO_AUTH_TOKEN':     app.config.get('TWILIO_AUTH_TOKEN'),
+            'TWILIO_FROM_NUMBER':    app.config.get('TWILIO_FROM_NUMBER'),
         }
         camera_service = CameraService(socketio, detector, cam_config, app=app)
 
